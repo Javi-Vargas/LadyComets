@@ -5,12 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>Orlando Lady Comets — Official Team Site</title>
     <meta name="description" content="Official site of the Orlando Lady Comets — schedule, roster, news, and tickets for the 2026 season." />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script type="module" crossorigin src="/assets/index-ClW9D12C.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DNof8uzO.css">
+    <!-- THEME OVERRIDE: Lady Comets blue/orange palette -->
+    <style>
+      :root {
+        /* Orange for the banner strip and small badges */
+        --primary: 24 92% 50%;
+        --primary-foreground: 0 0% 100%;
+
+        /* Electric blue as secondary */
+        --secondary: 219 82% 55%;
+        --secondary-foreground: 0 0% 100%;
+
+        /* Lighter blue as accent */
+        --accent: 213 100% 60%;
+        --accent-foreground: 0 0% 100%;
+
+        /* Ring & focus glow → orange */
+        --ring: 24 92% 50%;
+
+        /* Sidebar tokens */
+        --sidebar-primary: 24 92% 50%;
+        --sidebar-accent: 219 82% 55%;
+        --sidebar-ring: 24 92% 50%;
+
+        /* Charts */
+        --chart-1: 24 92% 50%;
+        --chart-2: 219 82% 55%;
+        --chart-3: 213 100% 60%;
+
+        /* Orange glow elevation shadows (was golden) */
+        --shadow-2xs: 0px 2px 0px 0px rgba(245,114,10,.2);
+        --shadow-xs:  0px 2px 0px 0px rgba(245,114,10,.2);
+        --shadow-sm:  0px 2px 0px 0px rgba(245,114,10,.2), 0px 1px 2px -1px rgba(245,114,10,.2);
+        --shadow:     0px 2px 0px 0px rgba(245,114,10,.2), 0px 1px 2px -1px rgba(245,114,10,.2);
+        --shadow-md:  0px 2px 0px 0px rgba(245,114,10,.2), 0px 2px 4px -1px rgba(245,114,10,.2);
+        --shadow-lg:  0px 2px 0px 0px rgba(245,114,10,.2), 0px 4px 6px -1px rgba(245,114,10,.2);
+        --shadow-xl:  0px 2px 0px 0px rgba(245,114,10,.2), 0px 8px 10px -1px rgba(245,114,10,.2);
+        --shadow-2xl: 0px 2px 0px 0px rgba(245,114,10,.2);
+      }
+
+      /* ── Buttons (all skewed sport-style CTAs) → navy blue ────────────── */
+      /* Buttons are uniquely identified by their skew-x transform class     */
+      .bg-primary[class*="skew-x"] {
+        background-color: hsl(219 82% 28%) !important;  /* deep navy blue */
+        color: white !important;
+        box-shadow: 0 0 30px rgba(21, 101, 232, 0.35) !important;
+      }
+      .bg-primary[class*="skew-x"]:hover,
+      :is(.group):hover .bg-primary[class*="skew-x"] {
+        background-color: hsl(219 82% 42%) !important;  /* lighter navy on hover */
+        color: white !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
