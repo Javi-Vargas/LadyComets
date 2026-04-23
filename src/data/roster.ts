@@ -1,0 +1,138 @@
+export interface Player {
+  id: number
+  name: string
+  nickname: string
+  number: string
+  position: 'PG' | 'SG' | 'SF' | 'PF' | 'C'
+  image: string
+  pts: number
+  ast: number
+  reb: number
+  height: string
+  college: string
+  bio: string
+  isStar: boolean
+}
+
+export const roster: Player[] = [
+  {
+    id: 1,
+    name: 'Zara Vance',
+    nickname: 'The Comet',
+    number: '3',
+    position: 'PG',
+    image: 'https://images.unsplash.com/photo-1526976668912-1a811878dd37?w=400&q=80',
+    pts: 28.4,
+    ast: 9.2,
+    reb: 4.1,
+    height: `5'10"`,
+    college: 'UConn',
+    bio: "Three-time All-Star and reigning league MVP. Vance is the engine of the Lady Comets' high-octane offense.",
+    isStar: true,
+  },
+  {
+    id: 2,
+    name: 'Maya Torres',
+    nickname: 'Thunderbird',
+    number: '7',
+    position: 'SG',
+    image: 'https://images.unsplash.com/photo-1590650153855-d9e808231d41?w=400&q=80',
+    pts: 22.1,
+    ast: 4.3,
+    reb: 3.8,
+    height: `6'0"`,
+    college: 'Tennessee',
+    bio: "An elite scorer with a silky mid-range game. Torres was the team's second-leading scorer in the playoffs.",
+    isStar: false,
+  },
+  {
+    id: 3,
+    name: 'Keisha Ware',
+    nickname: 'The Wall',
+    number: '12',
+    position: 'SF',
+    image: 'https://images.unsplash.com/photo-1583614952914-f1de3e9b3e58?w=400&q=80',
+    pts: 18.7,
+    ast: 3.1,
+    reb: 8.4,
+    height: `6'3"`,
+    college: 'Stanford',
+    bio: 'An unstoppable force in the paint, Ware leads the league in rebounds and is a defensive nightmare for opponents.',
+    isStar: false,
+  },
+  {
+    id: 4,
+    name: 'Nia Jackson',
+    nickname: 'Flash',
+    number: '21',
+    position: 'PF',
+    image: 'https://images.unsplash.com/photo-1546519638405-a9d1bbe7aa73?w=400&q=80',
+    pts: 16.2,
+    ast: 2.4,
+    reb: 10.1,
+    height: `6'4"`,
+    college: 'Ohio State',
+    bio: "Jackson's speed and athleticism at her size is unprecedented. A matchup nightmare at the power forward position.",
+    isStar: false,
+  },
+  {
+    id: 5,
+    name: 'Amara Diallo',
+    nickname: 'The General',
+    number: '5',
+    position: 'C',
+    image: 'https://images.unsplash.com/photo-1621784562872-6b5b6fbd498f?w=400&q=80',
+    pts: 14.8,
+    ast: 1.9,
+    reb: 12.3,
+    height: `6'6"`,
+    college: 'Florida',
+    bio: 'Commanding the paint with authority, Diallo protects the rim and sets the tone on defense every single night.',
+    isStar: false,
+  },
+  {
+    id: 6,
+    name: 'Priya Okafor',
+    nickname: 'Precision',
+    number: '14',
+    position: 'SG',
+    image: 'https://images.unsplash.com/photo-1524863479829-916d8e77f114?w=400&q=80',
+    pts: 13.5,
+    ast: 5.6,
+    reb: 2.9,
+    height: `5'11"`,
+    college: 'Duke',
+    bio: "A sharpshooter from deep who makes the extra pass. Okafor's basketball IQ is among the highest in the league.",
+    isStar: false,
+  },
+  {
+    id: 7,
+    name: 'Simone Hayes',
+    nickname: 'Ghost',
+    number: '9',
+    position: 'SF',
+    image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&q=80',
+    pts: 11.2,
+    ast: 3.8,
+    reb: 5.4,
+    height: `6'1"`,
+    college: 'LSU',
+    bio: 'Silently impacting every game, Hayes plays with a quiet confidence that belies her status as an elite two-way player.',
+    isStar: false,
+  },
+  {
+    id: 8,
+    name: 'Cleo Washington',
+    nickname: 'Ice',
+    number: '33',
+    position: 'PG',
+    image: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&q=80',
+    pts: 9.1,
+    ast: 7.2,
+    reb: 2.3,
+    height: `5'8"`,
+    college: 'Notre Dame',
+    bio: "Washington thrives in the biggest moments. Her composure under pressure earned her the 'Ice' nickname in college.",
+    isStar: false,
+  },
+]

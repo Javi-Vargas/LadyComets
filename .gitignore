@@ -1,4 +1,5 @@
-lady-comets/node_modules/
+node_modules/
+dist/
 
 # Logs
 *.log
@@ -10,3 +11,8 @@ pnpm-debug.log*
 # OS / editor artifacts
 .DS_Store
 Thumbs.db
+.env
+.env.local
+
+# Vite
+.vite/
