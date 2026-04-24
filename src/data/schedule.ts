@@ -17,6 +17,19 @@ export interface Game {
 
 export const allGames: Game[] = [
   {
+    id: 10,
+    date: '2026-04-23',
+    displayDate: 'Apr 23, 2026',
+    time: 'Completed',
+    opponent: 'Charlotte Sparks',
+    homeAway: 'HOME',
+    result: 'W',
+    score: '94–81',
+    venue: 'Amway Center',
+    past: true,
+    note: 'Season Opener',
+  },
+  {
     id: 1,
     date: '2026-06-06',
     displayDate: 'Jun 6–7, 2026',
