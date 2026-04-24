@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { MapPin, Clock, Check, Ticket } from 'lucide-react'
-import { schedule, ticketTiers } from '@/data/schedule'
+import { allGames, ticketTiers } from '@/data/schedule'
 import { cn } from '@/lib/utils'
 
 export default function Schedule() {
@@ -14,7 +14,7 @@ export default function Schedule() {
 
       {/* Games list */}
       <div className="space-y-3 mb-16">
-        {schedule.map((game, i) => (
+        {allGames.map((game, i) => (
           <motion.div
             key={game.id}
             initial={{ opacity: 0, x: -20 }}
@@ -36,9 +36,13 @@ export default function Schedule() {
             <div className="flex items-center justify-between p-4 flex-wrap gap-3">
               {/* Date & opponent */}
               <div className="flex items-center gap-4 min-w-0">
-                <div className="text-center min-w-[60px]">
-                  <p className="text-xs font-black text-white/40 uppercase">{game.date.split(' ')[0]}</p>
-                  <p className="text-2xl font-black text-white leading-tight">{game.date.split(' ')[1]?.replace(',', '')}</p>
+                <div className="text-center min-w-[70px]">
+                  <p className="text-xs font-black text-white/40 uppercase">
+                    {game.displayDate.split(' ')[0]}
+                  </p>
+                  <p className="text-2xl font-black text-white leading-tight">
+                    {game.displayDate.split(' ')[1]?.replace(',', '')}
+                  </p>
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -47,6 +51,8 @@ export default function Schedule() {
                         'text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5',
                         game.homeAway === 'HOME'
                           ? 'bg-primary/20 text-primary'
+                          : game.homeAway === 'TOURNAMENT'
+                          ? 'bg-accent/20 text-accent'
                           : 'bg-white/10 text-white/50',
                       )}
                     >
@@ -64,6 +70,9 @@ export default function Schedule() {
                         <Clock className="w-3 h-3" />
                         {game.time}
                       </span>
+                    )}
+                    {game.note && (
+                      <span className="text-primary font-bold">{game.note}</span>
                     )}
                   </div>
                 </div>
@@ -83,11 +92,6 @@ export default function Schedule() {
                     </span>
                     <p className="text-sm font-black text-white mt-1">{game.score}</p>
                   </div>
-                ) : game.sold ? (
-                  <span className="text-xs font-black uppercase tracking-widest text-white/30 flex items-center gap-1">
-                    <Check className="w-3 h-3" />
-                    Sold Out
-                  </span>
                 ) : (
                   <button className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-primary text-black hover:bg-white transition-colors duration-300 skew-x-[-8deg]">
                     <span className="skew-x-[8deg] flex items-center gap-1.5">

@@ -1,140 +1,145 @@
+export type HomeAway = 'HOME' | 'AWAY' | 'TOURNAMENT'
+
 export interface Game {
   id: number
-  date: string
-  time: string
+  date: string          // ISO: "2026-06-06"
+  displayDate: string   // Human: "Jun 6–7, 2026"
+  time: string          // "TBD" | "7:00 PM ET" | "Completed"
   opponent: string
-  homeAway: 'HOME' | 'AWAY'
+  homeAway: HomeAway
   result: 'W' | 'L' | null
   score: string | null
   venue: string
-  sold: boolean
   past: boolean
   isNext?: boolean
+  note?: string
 }
 
-export const schedule: Game[] = [
+export const allGames: Game[] = [
   {
     id: 1,
-    date: 'Apr 10, 2026',
-    time: 'Completed',
-    opponent: 'Phoenix Mercury',
-    homeAway: 'HOME',
-    result: 'W',
-    score: '98 – 85',
-    venue: 'Comet Dome, Orlando',
-    sold: true,
-    past: true,
+    date: '2026-06-06',
+    displayDate: 'Jun 6–7, 2026',
+    time: 'TBD',
+    opponent: 'USA Pride Cup',
+    homeAway: 'TOURNAMENT',
+    result: null,
+    score: null,
+    venue: 'Orlando, FL',
+    past: false,
   },
   {
     id: 2,
-    date: 'Apr 17, 2026',
-    time: 'Completed',
-    opponent: 'Seattle Storm',
-    homeAway: 'AWAY',
-    result: 'W',
-    score: '101 – 94',
-    venue: 'Climate Pledge Arena',
-    sold: true,
-    past: true,
+    date: '2026-06-14',
+    displayDate: 'Jun 14, 2026',
+    time: '7:00 PM ET',
+    opponent: 'Atlanta Reign',
+    homeAway: 'HOME',
+    result: null,
+    score: null,
+    venue: 'Amway Center',
+    past: false,
   },
   {
     id: 3,
-    date: 'Apr 23, 2026',
-    time: 'Completed',
-    opponent: 'Las Vegas Aces',
-    homeAway: 'HOME',
-    result: 'W',
-    score: '112 – 88',
-    venue: 'Comet Dome, Orlando',
-    sold: true,
-    past: true,
-  },
-  {
-    id: 4,
-    date: 'May 15, 2026',
-    time: '7:30 PM ET',
-    opponent: 'Seattle Storm',
-    homeAway: 'HOME',
-    result: null,
-    score: null,
-    venue: 'Comet Dome, Orlando',
-    sold: false,
-    past: false,
-    isNext: true,
-  },
-  {
-    id: 5,
-    date: 'May 22, 2026',
-    time: '8:00 PM ET',
-    opponent: 'Dallas Wings',
+    date: '2026-06-21',
+    displayDate: 'Jun 21, 2026',
+    time: '7:00 PM ET',
+    opponent: 'Miami Waves',
     homeAway: 'AWAY',
     result: null,
     score: null,
-    venue: 'College Park Center',
-    sold: false,
+    venue: 'Kaseya Center',
+    past: false,
+  },
+  {
+    id: 4,
+    date: '2026-06-28',
+    displayDate: 'Jun 28, 2026',
+    time: '7:00 PM ET',
+    opponent: 'Tampa Bay Thunder',
+    homeAway: 'HOME',
+    result: null,
+    score: null,
+    venue: 'Amway Center',
+    past: false,
+  },
+  {
+    id: 5,
+    date: '2026-07-05',
+    displayDate: 'Jul 5, 2026',
+    time: '7:00 PM ET',
+    opponent: 'Charlotte Fury',
+    homeAway: 'HOME',
+    result: null,
+    score: null,
+    venue: 'Amway Center',
     past: false,
   },
   {
     id: 6,
-    date: 'May 29, 2026',
+    date: '2026-07-12',
+    displayDate: 'Jul 12, 2026',
     time: '7:00 PM ET',
-    opponent: 'Indiana Fever',
-    homeAway: 'HOME',
+    opponent: 'Jacksonville Jets',
+    homeAway: 'AWAY',
     result: null,
     score: null,
-    venue: 'Comet Dome, Orlando',
-    sold: false,
+    venue: 'VyStar Arena',
     past: false,
   },
   {
     id: 7,
-    date: 'Jun 5, 2026',
-    time: '6:30 PM ET',
-    opponent: 'Connecticut Sun',
-    homeAway: 'AWAY',
+    date: '2026-07-19',
+    displayDate: 'Jul 19, 2026',
+    time: '7:00 PM ET',
+    opponent: 'Raleigh Storm',
+    homeAway: 'HOME',
     result: null,
     score: null,
-    venue: 'Mohegan Sun Arena',
-    sold: false,
+    venue: 'Amway Center',
     past: false,
   },
   {
     id: 8,
-    date: 'Jun 12, 2026',
-    time: '7:30 PM ET',
-    opponent: 'Atlanta Dream',
-    homeAway: 'HOME',
+    date: '2026-08-02',
+    displayDate: 'Aug 2, 2026',
+    time: '7:00 PM ET',
+    opponent: 'Atlanta Reign',
+    homeAway: 'AWAY',
     result: null,
     score: null,
-    venue: 'Comet Dome, Orlando',
-    sold: false,
+    venue: 'State Farm Arena',
     past: false,
   },
   {
     id: 9,
-    date: 'Jun 19, 2026',
-    time: '8:30 PM ET',
-    opponent: 'Los Angeles Sparks',
-    homeAway: 'AWAY',
-    result: null,
-    score: null,
-    venue: 'Crypto.com Arena',
-    sold: false,
-    past: false,
-  },
-  {
-    id: 10,
-    date: 'Jun 28, 2026',
+    date: '2026-08-09',
+    displayDate: 'Aug 9, 2026',
     time: '7:00 PM ET',
-    opponent: 'Phoenix Mercury',
+    opponent: 'Miami Waves',
     homeAway: 'HOME',
     result: null,
     score: null,
-    venue: 'Comet Dome, Orlando',
-    sold: false,
+    venue: 'Amway Center',
     past: false,
+    note: 'Championship Night',
   },
 ]
+
+/** Returns the next upcoming game (first game whose date is today or in the future). */
+export function getNextGame(): Game | undefined {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return allGames.find((g) => new Date(g.date) >= today)
+}
+
+/** Returns all games that haven't been played yet. */
+export function getUpcomingGames(): Game[] {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return allGames.filter((g) => new Date(g.date) >= today)
+}
 
 export interface TicketTier {
   tier: string

@@ -1,10 +1,13 @@
 import { Switch, Route } from 'wouter'
 import Layout from '@/components/Layout'
+import ProtectedRoute from '@/components/ProtectedRoute'
 import Home from '@/pages/Home'
 import Roster from '@/pages/Roster'
 import Schedule from '@/pages/Schedule'
 import News from '@/pages/News'
 import About from '@/pages/About'
+import AdminLogin from '@/pages/admin/Login'
+import AdminDashboard from '@/pages/admin/Dashboard'
 
 function NotFound() {
   return (
@@ -19,15 +22,28 @@ function NotFound() {
 
 export default function App() {
   return (
-    <Layout>
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/roster" component={Roster} />
-        <Route path="/schedule" component={Schedule} />
-        <Route path="/news" component={News} />
-        <Route path="/about" component={About} />
-        <Route component={NotFound} />
-      </Switch>
-    </Layout>
+    <Switch>
+      {/* Admin routes — own layout, no public ticker/nav */}
+      <Route path="/admin/login" component={AdminLogin} />
+      <Route path="/admin">
+        <ProtectedRoute>
+          <AdminDashboard />
+        </ProtectedRoute>
+      </Route>
+
+      {/* Public site — wrapped in Layout (ticker + nav) */}
+      <Route>
+        <Layout>
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/roster" component={Roster} />
+            <Route path="/schedule" component={Schedule} />
+            <Route path="/news" component={News} />
+            <Route path="/about" component={About} />
+            <Route component={NotFound} />
+          </Switch>
+        </Layout>
+      </Route>
+    </Switch>
   )
 }

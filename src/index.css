@@ -39,13 +39,13 @@
   --radius: 0;
 
   /* Lady Comets brand palette */
-  --primary: 24 92% 50%;
+  --primary: 26 91% 51%;
   --primary-foreground: 0 0% 100%;
   --secondary: 219 82% 55%;
   --secondary-foreground: 0 0% 100%;
   --accent: 213 100% 60%;
   --accent-foreground: 0 0% 100%;
-  --ring: 24 92% 50%;
+  --ring: 26 91% 51%;
 
   --shadow-2xs: 0px 2px 0px 0px rgba(245,114,10,.2);
   --shadow-xs:  0px 2px 0px 0px rgba(245,114,10,.2);
@@ -55,6 +55,7 @@
   --shadow-lg:  0px 2px 0px 0px rgba(245,114,10,.2), 0px 4px 6px -1px rgba(245,114,10,.2);
   --shadow-xl:  0px 2px 0px 0px rgba(245,114,10,.2), 0px 8px 10px -1px rgba(245,114,10,.2);
   --shadow-2xl: 0px 2px 0px 0px rgba(245,114,10,.2);
+  /* hsl(26 91% 51%) = #F5720A */
 }
 
 @layer base {

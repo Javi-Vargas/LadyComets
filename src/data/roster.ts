@@ -1,9 +1,12 @@
 export interface Player {
-  id: number
+  id: number | string
   name: string
   nickname: string
   number: string
+  /** Primary position abbreviation for legacy filter logic */
   position: 'PG' | 'SG' | 'SF' | 'PF' | 'C'
+  /** All positions as an array, e.g. ['PG', 'SF'] */
+  positions: string[]
   image: string
   pts: number
   ast: number
@@ -21,6 +24,7 @@ export const roster: Player[] = [
     nickname: 'The Comet',
     number: '3',
     position: 'PG',
+    positions: ['PG'],
     image: 'https://images.unsplash.com/photo-1526976668912-1a811878dd37?w=400&q=80',
     pts: 28.4,
     ast: 9.2,
@@ -36,6 +40,7 @@ export const roster: Player[] = [
     nickname: 'Thunderbird',
     number: '7',
     position: 'SG',
+    positions: ['SG'],
     image: 'https://images.unsplash.com/photo-1590650153855-d9e808231d41?w=400&q=80',
     pts: 22.1,
     ast: 4.3,
@@ -51,6 +56,7 @@ export const roster: Player[] = [
     nickname: 'The Wall',
     number: '12',
     position: 'SF',
+    positions: ['SF'],
     image: 'https://images.unsplash.com/photo-1583614952914-f1de3e9b3e58?w=400&q=80',
     pts: 18.7,
     ast: 3.1,
@@ -66,6 +72,7 @@ export const roster: Player[] = [
     nickname: 'Flash',
     number: '21',
     position: 'PF',
+    positions: ['PF'],
     image: 'https://images.unsplash.com/photo-1546519638405-a9d1bbe7aa73?w=400&q=80',
     pts: 16.2,
     ast: 2.4,
@@ -81,6 +88,7 @@ export const roster: Player[] = [
     nickname: 'The General',
     number: '5',
     position: 'C',
+    positions: ['C'],
     image: 'https://images.unsplash.com/photo-1621784562872-6b5b6fbd498f?w=400&q=80',
     pts: 14.8,
     ast: 1.9,
@@ -96,6 +104,7 @@ export const roster: Player[] = [
     nickname: 'Precision',
     number: '14',
     position: 'SG',
+    positions: ['SG'],
     image: 'https://images.unsplash.com/photo-1524863479829-916d8e77f114?w=400&q=80',
     pts: 13.5,
     ast: 5.6,
@@ -111,6 +120,7 @@ export const roster: Player[] = [
     nickname: 'Ghost',
     number: '9',
     position: 'SF',
+    positions: ['SF'],
     image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&q=80',
     pts: 11.2,
     ast: 3.8,
@@ -126,6 +136,7 @@ export const roster: Player[] = [
     nickname: 'Ice',
     number: '33',
     position: 'PG',
+    positions: ['PG'],
     image: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=400&q=80',
     pts: 9.1,
     ast: 7.2,

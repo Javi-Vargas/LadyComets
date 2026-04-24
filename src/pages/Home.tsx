@@ -3,6 +3,9 @@ import { Link } from 'wouter'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { Ticket, ChevronRight } from 'lucide-react'
 import CountdownTimer from '@/components/CountdownTimer'
+import { getNextGame } from '@/data/schedule'
+
+const nextGame = getNextGame()
 
 /* ── Standings ── */
 const STANDINGS = [
@@ -231,7 +234,9 @@ export default function Home() {
           >
             <div className="inline-block glass-panel px-6 py-5 md:px-10 md:py-7">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary mb-4 text-center">
-                Next Game — May 15 vs Storm
+                {nextGame
+                  ? `Next Game — ${nextGame.displayDate} vs ${nextGame.opponent}`
+                  : 'Season Schedule'}
               </p>
               <CountdownTimer />
             </div>

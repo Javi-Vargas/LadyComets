@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { getNextGame } from '@/data/schedule'
 
 interface TimeLeft {
   days: number
@@ -7,10 +8,20 @@ interface TimeLeft {
   seconds: number
 }
 
-function useCountdown(target: Date): TimeLeft {
+/**
+ * Computed at module level — NEVER inside a component or useEffect.
+ * Creating a new Date() inside a component causes a new reference on every
+ * render and triggers an infinite re-render loop in the countdown effect.
+ */
+const nextGame = getNextGame()
+const NEXT_GAME_TARGET: Date | null = nextGame ? new Date(`${nextGame.date}T19:00:00`) : null
+
+function useCountdown(target: Date | null): TimeLeft {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0 })
 
   useEffect(() => {
+    if (!target) return
+
     const tick = () => {
       const diff = target.getTime() - Date.now()
       if (diff <= 0) {
@@ -46,10 +57,16 @@ function Unit({ value, label }: { value: number; label: string }) {
   )
 }
 
-const NEXT_GAME = new Date('2026-05-15T19:30:00')
-
 export default function CountdownTimer() {
-  const t = useCountdown(NEXT_GAME)
+  const t = useCountdown(NEXT_GAME_TARGET)
+
+  if (!NEXT_GAME_TARGET) {
+    return (
+      <p className="text-white/40 text-sm font-bold uppercase tracking-widest">
+        Season complete
+      </p>
+    )
+  }
 
   return (
     <div className="flex items-center gap-4 md:gap-8" data-testid="countdown-timer">
