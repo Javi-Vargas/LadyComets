@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'wouter'
-import { supabase, getPhotoUrl, type DbPlayer } from '@/lib/supabase'
+import { supabase, getPhotoUrl, type DbPlayer, type DbGame, type DbPlayerGameStats } from '@/lib/supabase'
+import { allGames } from '@/data/schedule'
 import { cn } from '@/lib/utils'
-import { Check } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -458,6 +459,631 @@ function PlayersTab() {
   )
 }
 
+// ── Games Tab ─────────────────────────────────────────────────────────────────
+
+const HOME_AWAY_OPTIONS = ['HOME', 'AWAY', 'TOURNAMENT'] as const
+const RESULT_OPTIONS = [
+  { value: '', label: '— Upcoming' },
+  { value: 'W', label: 'W – Win' },
+  { value: 'L', label: 'L – Loss' },
+] as const
+
+interface GameFormState {
+  schedule_id: string
+  date: string
+  opponent: string
+  home_away: string
+  venue: string
+  team_score: string
+  opponent_score: string
+  result: string
+}
+
+const EMPTY_GAME_FORM: GameFormState = {
+  schedule_id: '',
+  date: '',
+  opponent: '',
+  home_away: 'HOME',
+  venue: '',
+  team_score: '',
+  opponent_score: '',
+  result: '',
+}
+
+interface StatsRowState {
+  player_id: number
+  player_name: string
+  jersey_number: number | null
+  stat_id: number | null  // null = not yet saved
+  minutes: string
+  points: string
+  rebounds: string
+  assists: string
+  steals: string
+  blocks: string
+  turnovers: string
+  fgm: string; fga: string
+  threepm: string; threepa: string
+  ftm: string; fta: string
+  saved: boolean
+  saving: boolean
+}
+
+function makeEmptyRow(player: DbPlayer): StatsRowState {
+  return {
+    player_id: player.id,
+    player_name: player.name,
+    jersey_number: player.jersey_number,
+    stat_id: null,
+    minutes: '', points: '', rebounds: '', assists: '',
+    steals: '', blocks: '', turnovers: '',
+    fgm: '', fga: '', threepm: '', threepa: '',
+    ftm: '', fta: '',
+    saved: false,
+    saving: false,
+  }
+}
+
+function numOrZero(s: string): number {
+  const n = parseInt(s, 10)
+  return isNaN(n) ? 0 : n
+}
+
+// ── Box Score Entry ───────────────────────────────────────────────────────────
+
+interface BoxScoreEntryProps {
+  gameId: number
+}
+
+function BoxScoreEntry({ gameId }: BoxScoreEntryProps) {
+  const [rows, setRows] = useState<StatsRowState[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true)
+      const [{ data: players }, { data: existing }] = await Promise.all([
+        supabase.from('players').select('*').order('sort_order').order('created_at'),
+        supabase.from('player_game_stats').select('*').eq('game_id', gameId),
+      ])
+
+      const existingMap = new Map<number, DbPlayerGameStats>()
+      for (const s of (existing ?? []) as DbPlayerGameStats[]) {
+        existingMap.set(s.player_id, s)
+      }
+
+      const newRows: StatsRowState[] = ((players ?? []) as DbPlayer[]).map((p) => {
+        const ex = existingMap.get(p.id)
+        if (ex) {
+          return {
+            player_id: p.id,
+            player_name: p.name,
+            jersey_number: p.jersey_number,
+            stat_id: ex.id,
+            minutes: ex.minutes ?? '',
+            points: String(ex.points),
+            rebounds: String(ex.rebounds),
+            assists: String(ex.assists),
+            steals: String(ex.steals),
+            blocks: String(ex.blocks),
+            turnovers: String(ex.turnovers),
+            fgm: String(ex.fgm), fga: String(ex.fga),
+            threepm: String(ex.threepm), threepa: String(ex.threepa),
+            ftm: String(ex.ftm), fta: String(ex.fta),
+            saved: true,
+            saving: false,
+          }
+        }
+        return makeEmptyRow(p)
+      })
+      setRows(newRows)
+      setLoading(false)
+    }
+    void load()
+  }, [gameId])
+
+  function updateRow(idx: number, patch: Partial<StatsRowState>) {
+    setRows((prev) => prev.map((r, i) => i === idx ? { ...r, ...patch, saved: false } : r))
+  }
+
+  async function saveRow(idx: number) {
+    const row = rows[idx]
+    setRows((prev) => prev.map((r, i) => i === idx ? { ...r, saving: true } : r))
+
+    const payload = {
+      game_id: gameId,
+      player_id: row.player_id,
+      minutes: row.minutes || null,
+      points: numOrZero(row.points),
+      rebounds: numOrZero(row.rebounds),
+      assists: numOrZero(row.assists),
+      steals: numOrZero(row.steals),
+      blocks: numOrZero(row.blocks),
+      turnovers: numOrZero(row.turnovers),
+      fgm: numOrZero(row.fgm), fga: numOrZero(row.fga),
+      threepm: numOrZero(row.threepm), threepa: numOrZero(row.threepa),
+      ftm: numOrZero(row.ftm), fta: numOrZero(row.fta),
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data, error } = await supabase
+      .from('player_game_stats')
+      .upsert(
+        row.stat_id
+          ? { id: row.stat_id, ...payload }
+          : { ...payload, created_at: new Date().toISOString() },
+        { onConflict: 'game_id,player_id' },
+      )
+      .select()
+
+    if (!error && data?.[0]) {
+      setRows((prev) =>
+        prev.map((r, i) =>
+          i === idx ? { ...r, stat_id: (data[0] as DbPlayerGameStats).id, saving: false, saved: true } : r,
+        ),
+      )
+    } else {
+      setRows((prev) => prev.map((r, i) => i === idx ? { ...r, saving: false } : r))
+    }
+  }
+
+  const statFields: Array<{ key: keyof StatsRowState; label: string; w?: string }> = [
+    { key: 'minutes', label: 'MIN', w: 'w-14' },
+    { key: 'points', label: 'PTS', w: 'w-10' },
+    { key: 'rebounds', label: 'REB', w: 'w-10' },
+    { key: 'assists', label: 'AST', w: 'w-10' },
+    { key: 'steals', label: 'STL', w: 'w-10' },
+    { key: 'blocks', label: 'BLK', w: 'w-10' },
+    { key: 'turnovers', label: 'TO', w: 'w-10' },
+    { key: 'fgm', label: 'FGM', w: 'w-10' },
+    { key: 'fga', label: 'FGA', w: 'w-10' },
+    { key: 'threepm', label: '3PM', w: 'w-10' },
+    { key: 'threepa', label: '3PA', w: 'w-10' },
+    { key: 'ftm', label: 'FTM', w: 'w-10' },
+    { key: 'fta', label: 'FTA', w: 'w-10' },
+  ]
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4">
+      <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-3">Box Score Entry</p>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr style={{ borderBottom: '1px solid hsl(220 20% 20%)' }}>
+              <th className="text-left py-2 pr-3 text-white/40 font-bold uppercase tracking-wider whitespace-nowrap">Player</th>
+              {statFields.map(({ label }) => (
+                <th key={label} className="py-2 px-1 text-center text-white/40 font-bold uppercase tracking-wider">{label}</th>
+              ))}
+              <th className="py-2 pl-2 text-white/40 font-bold uppercase tracking-wider">Save</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, idx) => (
+              <tr
+                key={row.player_id}
+                className={cn('border-b', idx % 2 === 0 ? 'bg-white/[0.01]' : '')}
+                style={{ borderColor: 'hsl(220 20% 15%)' }}
+              >
+                <td className="py-2 pr-3 whitespace-nowrap">
+                  <span className="text-white/80 font-bold">{row.player_name}</span>
+                  {row.jersey_number != null && (
+                    <span className="ml-1 text-white/30">#{row.jersey_number}</span>
+                  )}
+                </td>
+                {statFields.map(({ key, w }) => (
+                  <td key={key} className="py-1.5 px-1 text-center">
+                    <input
+                      type="text"
+                      value={row[key] as string}
+                      onChange={(e) => updateRow(idx, { [key]: e.target.value } as Partial<StatsRowState>)}
+                      className={cn(
+                        'text-center text-white text-xs rounded py-1 outline-none focus:ring-1 focus:ring-primary',
+                        w ?? 'w-10',
+                      )}
+                      style={{ background: 'hsl(220 30% 14%)', border: '1px solid hsl(220 20% 22%)' }}
+                    />
+                  </td>
+                ))}
+                <td className="py-1.5 pl-2">
+                  <button
+                    onClick={() => { void saveRow(idx) }}
+                    disabled={row.saving}
+                    className={cn(
+                      'px-2 py-1 rounded text-xs font-bold transition-colors',
+                      row.saved
+                        ? 'text-green-400 border-green-800'
+                        : 'text-white/70 hover:text-white',
+                    )}
+                    style={{ border: '1px solid hsl(220 20% 28%)' }}
+                  >
+                    {row.saving ? '…' : row.saved ? <Check className="w-3 h-3" /> : 'Save'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ── Games Tab ─────────────────────────────────────────────────────────────────
+
+function GamesTab() {
+  const [games, setGames] = useState<DbGame[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editingGame, setEditingGame] = useState<DbGame | null>(null)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [form, setForm] = useState<GameFormState>(EMPTY_GAME_FORM)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function fetchGames() {
+    const { data } = await supabase
+      .from('games')
+      .select('*')
+      .order('date', { ascending: false })
+    setGames((data ?? []) as DbGame[])
+    setLoading(false)
+  }
+
+  useEffect(() => { void fetchGames() }, [])
+
+  function openAdd() {
+    setEditingGame(null)
+    setForm(EMPTY_GAME_FORM)
+    setError(null)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openEdit(game: DbGame) {
+    setEditingGame(game)
+    setForm({
+      schedule_id: game.schedule_id != null ? String(game.schedule_id) : '',
+      date: game.date,
+      opponent: game.opponent,
+      home_away: game.home_away,
+      venue: game.venue ?? '',
+      team_score: game.team_score != null ? String(game.team_score) : '',
+      opponent_score: game.opponent_score != null ? String(game.opponent_score) : '',
+      result: game.result ?? '',
+    })
+    setError(null)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (!form.date || !form.opponent) { setError('Date and opponent are required.'); return }
+
+    setSaving(true)
+    setError(null)
+
+    const payload = {
+      schedule_id: form.schedule_id ? parseInt(form.schedule_id, 10) : null,
+      date: form.date,
+      opponent: form.opponent.trim(),
+      home_away: form.home_away,
+      venue: form.venue.trim() || null,
+      team_score: form.team_score ? parseInt(form.team_score, 10) : null,
+      opponent_score: form.opponent_score ? parseInt(form.opponent_score, 10) : null,
+      result: form.result || null,
+      updated_at: new Date().toISOString(),
+    }
+
+    try {
+      if (editingGame) {
+        const { error: err } = await supabase.from('games').update(payload).eq('id', editingGame.id)
+        if (err) throw err
+      } else {
+        const { error: err } = await supabase.from('games').insert({ ...payload, created_at: new Date().toISOString() })
+        if (err) throw err
+      }
+      setShowForm(false)
+      setEditingGame(null)
+      void fetchGames()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save game.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm('Delete this game and all its stats?')) return
+    await supabase.from('games').delete().eq('id', id)
+    void fetchGames()
+  }
+
+  const inputCls = 'w-full px-3 py-2.5 rounded text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-primary'
+  const inputStyle = { background: 'hsl(220 30% 17%)', border: '1px solid hsl(220 20% 25%)' }
+  const labelCls = 'block text-xs font-bold text-white/60 uppercase tracking-wider mb-1.5'
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-white">Games</h2>
+        {!showForm && (
+          <button
+            onClick={openAdd}
+            className="px-4 py-2 rounded text-sm font-black uppercase tracking-wider text-white"
+            style={{ background: 'hsl(26 91% 51%)' }}
+          >
+            + Add game
+          </button>
+        )}
+      </div>
+
+      {/* Game form */}
+      {showForm && (
+        <div
+          className="rounded-xl p-6 mb-6"
+          style={{ background: 'hsl(220 30% 12%)', border: '1px solid hsl(220 20% 20%)' }}
+        >
+          <h3 className="text-lg font-bold text-white mb-5">
+            {editingGame ? 'Edit game' : 'New game'}
+          </h3>
+          <form onSubmit={(e) => { void handleSubmit(e) }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {/* Schedule link */}
+              <div>
+                <label className={labelCls}>Link to Schedule Entry</label>
+                <select
+                  value={form.schedule_id}
+                  onChange={(e) => {
+                    const sid = e.target.value
+                    const matched = allGames.find((g) => String(g.id) === sid)
+                    setForm((f) => ({
+                      ...f,
+                      schedule_id: sid,
+                      opponent: matched ? matched.opponent : f.opponent,
+                      date: matched ? matched.date : f.date,
+                      home_away: matched ? matched.homeAway : f.home_away,
+                      venue: matched ? matched.venue : f.venue,
+                    }))
+                  }}
+                  className={inputCls}
+                  style={inputStyle}
+                >
+                  <option value="">— None (custom game)</option>
+                  {allGames.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.displayDate} · {g.opponent}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className={labelCls}>Date <span className="text-primary">*</span></label>
+                <input
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                  required
+                />
+              </div>
+
+              {/* Opponent */}
+              <div>
+                <label className={labelCls}>Opponent <span className="text-primary">*</span></label>
+                <input
+                  type="text"
+                  value={form.opponent}
+                  onChange={(e) => setForm((f) => ({ ...f, opponent: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                  required
+                />
+              </div>
+
+              {/* Home/Away */}
+              <div>
+                <label className={labelCls}>Home / Away</label>
+                <select
+                  value={form.home_away}
+                  onChange={(e) => setForm((f) => ({ ...f, home_away: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                >
+                  {HOME_AWAY_OPTIONS.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Venue */}
+              <div>
+                <label className={labelCls}>Venue</label>
+                <input
+                  type="text"
+                  value={form.venue}
+                  onChange={(e) => setForm((f) => ({ ...f, venue: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Result */}
+              <div>
+                <label className={labelCls}>Result</label>
+                <select
+                  value={form.result}
+                  onChange={(e) => setForm((f) => ({ ...f, result: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                >
+                  {RESULT_OPTIONS.map(({ value, label }) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Scores */}
+              <div>
+                <label className={labelCls}>Lady Comets Score</label>
+                <input
+                  type="number"
+                  value={form.team_score}
+                  onChange={(e) => setForm((f) => ({ ...f, team_score: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Opponent Score</label>
+                <input
+                  type="number"
+                  value={form.opponent_score}
+                  onChange={(e) => setForm((f) => ({ ...f, opponent_score: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+
+            {error && (
+              <p className="mt-4 text-red-400 text-xs font-medium bg-red-500/10 border border-red-500/20 rounded px-3 py-2">
+                {error}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => { setShowForm(false); setEditingGame(null) }}
+                className="px-5 py-2 text-sm font-bold text-white/60 hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-6 py-2 rounded text-sm font-black uppercase tracking-wider text-white disabled:opacity-60"
+                style={{ background: 'hsl(26 91% 51%)' }}
+              >
+                {saving ? 'Saving…' : editingGame ? 'Save changes' : 'Add game'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Games list */}
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : games.length === 0 ? (
+        <div
+          className="rounded-xl py-16 text-center"
+          style={{ border: '1px solid hsl(220 20% 20%)' }}
+        >
+          <p className="text-white/40 text-sm">No games yet. Click &quot;Add game&quot; to get started.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {games.map((game) => {
+            const isExpanded = expandedId === game.id
+            return (
+              <div
+                key={game.id}
+                className="rounded-lg overflow-hidden"
+                style={{ background: 'hsl(220 30% 12%)', border: '1px solid hsl(220 20% 20%)' }}
+              >
+                {/* Row header */}
+                <div className="flex items-center justify-between px-4 py-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="text-xs font-bold text-white/40 whitespace-nowrap">{game.date}</div>
+                    <span
+                      className={cn(
+                        'text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 shrink-0',
+                        game.home_away === 'HOME'
+                          ? 'bg-primary/20 text-primary'
+                          : game.home_away === 'TOURNAMENT'
+                          ? 'bg-blue-500/20 text-blue-400'
+                          : 'bg-white/10 text-white/40',
+                      )}
+                    >
+                      {game.home_away}
+                    </span>
+                    <span className="text-sm font-bold text-white truncate">{game.opponent}</span>
+                    {game.result ? (
+                      <span
+                        className={cn(
+                          'text-xs font-black uppercase tracking-widest px-2 py-0.5 shrink-0',
+                          game.result === 'W' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400',
+                        )}
+                      >
+                        {game.result}
+                        {game.team_score != null && game.opponent_score != null
+                          ? ` ${game.team_score}–${game.opponent_score}`
+                          : ''}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-white/30">Upcoming</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => openEdit(game)}
+                      className="px-3 py-1.5 text-xs font-bold text-white/70 hover:text-white rounded transition-colors"
+                      style={{ border: '1px solid hsl(220 20% 30%)' }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => { void handleDelete(game.id) }}
+                      className="px-3 py-1.5 text-xs font-bold text-red-400 hover:text-red-300 rounded transition-colors"
+                      style={{ border: '1px solid hsl(0 50% 30%)' }}
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setExpandedId(isExpanded ? null : game.id)}
+                      className="px-2 py-1.5 text-white/40 hover:text-white transition-colors rounded"
+                      style={{ border: '1px solid hsl(220 20% 30%)' }}
+                      title="Enter box score"
+                    >
+                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Box score entry */}
+                {isExpanded && (
+                  <div
+                    className="px-4 pb-4 pt-1"
+                    style={{ borderTop: '1px solid hsl(220 20% 18%)' }}
+                  >
+                    <BoxScoreEntry gameId={game.id} />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -533,11 +1159,7 @@ export default function AdminDashboard() {
       <main className="max-w-4xl mx-auto px-6 py-8">
         {tab === 'players' && <PlayersTab />}
 
-        {tab === 'games' && (
-          <div className="text-center py-16">
-            <p className="text-white/30 text-sm">Games management coming soon.</p>
-          </div>
-        )}
+        {tab === 'games' && <GamesTab />}
 
         {tab === 'content' && (
           <div className="text-center py-16">

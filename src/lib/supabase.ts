@@ -19,6 +19,55 @@ export type DbPlayer = {
   updated_at: string
 }
 
+/** Shape returned by the `games` table in Supabase. */
+export type DbGame = {
+  id: number
+  schedule_id: number | null  // maps to static allGames[].id in schedule.ts
+  date: string                // ISO date: "2026-06-14"
+  opponent: string
+  home_away: 'HOME' | 'AWAY' | 'TOURNAMENT'
+  team_score: number | null
+  opponent_score: number | null
+  result: 'W' | 'L' | null
+  venue: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** Shape returned by the `player_game_stats` table in Supabase. */
+export type DbPlayerGameStats = {
+  id: number
+  game_id: number
+  player_id: number
+  minutes: string | null
+  points: number
+  rebounds: number
+  assists: number
+  steals: number
+  blocks: number
+  turnovers: number
+  fgm: number
+  fga: number
+  threepm: number
+  threepa: number
+  ftm: number
+  fta: number
+  created_at: string
+  updated_at: string
+}
+
+/** Extended stat row joined with player info (for box score display). */
+export type StatWithPlayer = DbPlayerGameStats & {
+  player_name: string
+  jersey_number: number | null
+  photo_path: string | null
+}
+
+/** Extended stat row joined with game info (for player game log). */
+export type StatWithGame = DbPlayerGameStats & {
+  game: DbGame
+}
+
 /**
  * Given a Supabase Storage path stored in photo_path, return the
  * full public URL for display.  Returns null if no path provided.

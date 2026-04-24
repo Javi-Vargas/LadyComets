@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
 import { usePlayers } from '@/hooks/usePlayers'
+import { usePlayerStats } from '@/hooks/usePlayerStats'
 import { type Player } from '@/data/roster'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +14,23 @@ function posDisplay(player: Player): string {
   if (player.positions.length > 0) return player.positions.join(' · ')
   return player.position
 }
+
+// ── Averages skeleton ─────────────────────────────────────────────────────────
+
+function AveragesSkeleton() {
+  return (
+    <div className="grid grid-cols-7 gap-2 animate-pulse">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} className="text-center">
+          <div className="h-6 bg-white/10 rounded mb-1 mx-auto w-10" />
+          <div className="h-2 bg-white/5 rounded w-8 mx-auto" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ── Player Card ───────────────────────────────────────────────────────────────
 
 function PlayerCard({ player, onClick }: { player: Player; onClick: (p: Player) => void }) {
   const hasStats = player.pts > 0 || player.ast > 0 || player.reb > 0
@@ -92,8 +110,20 @@ function PlayerCard({ player, onClick }: { player: Player; onClick: (p: Player) 
   )
 }
 
+// ── Player Modal ──────────────────────────────────────────────────────────────
+
 function PlayerModal({ player, onClose }: { player: Player; onClose: () => void }) {
-  const hasStats = player.pts > 0 || player.ast > 0 || player.reb > 0
+  const { averages, gameLog, loading } = usePlayerStats(player.id)
+
+  const statCols: Array<{ label: string; value: string }> = [
+    { label: 'PPG', value: averages.ppg.toFixed(1) },
+    { label: 'RPG', value: averages.rpg.toFixed(1) },
+    { label: 'APG', value: averages.apg.toFixed(1) },
+    { label: 'SPG', value: averages.spg.toFixed(1) },
+    { label: 'BPG', value: averages.bpg.toFixed(1) },
+    { label: 'FG%', value: `${averages.fgPct.toFixed(1)}%` },
+    { label: '3P%', value: `${averages.threePct.toFixed(1)}%` },
+  ]
 
   return (
     <motion.div
@@ -108,7 +138,7 @@ function PlayerModal({ player, onClose }: { player: Player; onClose: () => void 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative z-10 max-w-lg w-full overflow-hidden glass-panel"
+        className="relative z-10 max-w-2xl w-full overflow-hidden glass-panel max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -118,7 +148,8 @@ function PlayerModal({ player, onClose }: { player: Player; onClose: () => void 
           <X className="w-5 h-5" />
         </button>
 
-        <div className="relative h-72 overflow-hidden">
+        {/* Photo hero */}
+        <div className="relative h-64 overflow-hidden shrink-0">
           <img
             src={player.image}
             alt={player.name}
@@ -135,41 +166,139 @@ function PlayerModal({ player, onClose }: { player: Player; onClose: () => void 
               <span className="text-xs text-white/40 uppercase">{posDisplay(player)}</span>
             </div>
             <h2 className="text-3xl font-black uppercase text-white tracking-tight">{player.name}</h2>
-            {player.nickname && (
-              <p className="text-sm text-white/40 italic">"{player.nickname}"</p>
+            {player.height && (
+              <p className="text-sm text-white/40 mt-0.5">{player.height}</p>
             )}
           </div>
         </div>
 
-        <div className="p-6">
+        {/* Scrollable body */}
+        <div className="overflow-y-auto flex-1">
+          {/* Bio */}
           {player.bio && (
-            <p className="text-sm text-white/60 leading-relaxed mb-5">{player.bio}</p>
-          )}
-
-          {hasStats && (
-            <div className="grid grid-cols-3 gap-4 py-4 border-t border-white/10">
-              <div className="text-center">
-                <p className="text-2xl font-black text-white font-mono">{player.pts}</p>
-                <p className="text-[10px] font-black uppercase tracking-widest mt-1">PPG</p>
-              </div>
-              <div className="text-center border-x border-white/10">
-                <p className="text-2xl font-black text-white font-mono">{player.ast}</p>
-                <p className="text-[10px] font-black uppercase tracking-widest mt-1">APG</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-black text-white font-mono">{player.reb}</p>
-                <p className="text-[10px] font-black uppercase tracking-widest mt-1">RPG</p>
-              </div>
+            <div className="px-6 pt-5 pb-4">
+              <p className="text-sm text-white/60 leading-relaxed">{player.bio}</p>
             </div>
           )}
 
-          {(player.height || player.college) && (
-            <div className="flex items-center gap-3 mt-4 text-xs text-white/40">
-              {player.height && <span className="font-bold">{player.height}</span>}
-              {player.height && player.college && <span>·</span>}
-              {player.college && <span>{player.college}</span>}
+          {/* Season averages */}
+          <div className="px-6 pb-4">
+            <div className="border-t border-white/10 pt-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-3">
+                2026 Season
+                {!loading && averages.gamesPlayed > 0 && (
+                  <span className="text-white/20 ml-2">· {averages.gamesPlayed} GP</span>
+                )}
+              </p>
+
+              {loading ? (
+                <AveragesSkeleton />
+              ) : averages.gamesPlayed === 0 ? (
+                <div>
+                  <div className="grid grid-cols-7 gap-2">
+                    {statCols.map(({ label, value }) => (
+                      <div key={label} className="text-center">
+                        <p className="text-lg font-black text-white font-mono">{value}</p>
+                        <p className="text-[10px] text-white/30 uppercase tracking-wider mt-0.5">{label}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-white/30 mt-3 text-center">No stats recorded yet this season</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-7 gap-2">
+                  {statCols.map(({ label, value }) => (
+                    <div key={label} className="text-center">
+                      <p className="text-lg font-black text-white font-mono">{value}</p>
+                      <p className="text-[10px] text-white/30 uppercase tracking-wider mt-0.5">{label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
+          {/* Game log */}
+          <div className="px-6 pb-6">
+            <div className="border-t border-white/10 pt-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mb-3">
+                Game Log
+              </p>
+
+              {loading ? (
+                <div className="space-y-2 animate-pulse">
+                  {[1,2,3].map((i) => (
+                    <div key={i} className="h-8 bg-white/5 rounded" />
+                  ))}
+                </div>
+              ) : gameLog.length === 0 ? (
+                <p className="text-xs text-white/30 py-4 text-center">No games logged yet</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        {['Date','Opp','W/L','Min','Pts','Reb','Ast','Stl','Blk','TO','FG','3PT','FT'].map((h) => (
+                          <th
+                            key={h}
+                            className={cn(
+                              'py-2 font-black uppercase tracking-wider text-white/30',
+                              h === 'Date' || h === 'Opp' ? 'text-left pr-3' : 'text-center px-1.5',
+                            )}
+                          >
+                            {h}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {gameLog.map((row, i) => {
+                        const g = row.game
+                        const oppLabel = g.home_away === 'AWAY' ? `@ ${g.opponent}` : `vs ${g.opponent}`
+                        const dateObj = new Date(g.date + 'T00:00:00')
+                        const dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                        const scoreBadge = g.team_score != null && g.opponent_score != null
+                          ? ` ${g.team_score}-${g.opponent_score}`
+                          : ''
+
+                        return (
+                          <tr
+                            key={row.id}
+                            className={cn('border-b border-white/5', i % 2 === 0 ? 'bg-white/[0.02]' : '')}
+                          >
+                            <td className="py-2 pr-3 text-white/50 whitespace-nowrap">{dateLabel}</td>
+                            <td className="py-2 pr-3 text-white/70 whitespace-nowrap max-w-[90px] truncate">{oppLabel}</td>
+                            <td className="py-2 px-1.5 text-center">
+                              {g.result ? (
+                                <span
+                                  className={cn(
+                                    'inline-block text-[10px] font-black px-1.5 py-0.5 rounded-sm whitespace-nowrap',
+                                    g.result === 'W' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400',
+                                  )}
+                                >
+                                  {g.result}{scoreBadge}
+                                </span>
+                              ) : '—'}
+                            </td>
+                            <td className="py-2 px-1.5 text-center text-white/60">{row.minutes ?? '—'}</td>
+                            <td className="py-2 px-1.5 text-center font-black text-primary">{row.points}</td>
+                            <td className="py-2 px-1.5 text-center text-white/80">{row.rebounds}</td>
+                            <td className="py-2 px-1.5 text-center text-white/80">{row.assists}</td>
+                            <td className="py-2 px-1.5 text-center text-white/80">{row.steals}</td>
+                            <td className="py-2 px-1.5 text-center text-white/80">{row.blocks}</td>
+                            <td className="py-2 px-1.5 text-center text-white/80">{row.turnovers}</td>
+                            <td className="py-2 px-1.5 text-center text-white/60">{row.fgm}/{row.fga}</td>
+                            <td className="py-2 px-1.5 text-center text-white/60">{row.threepm}/{row.threepa}</td>
+                            <td className="py-2 px-1.5 text-center text-white/60">{row.ftm}/{row.fta}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </motion.div>
     </motion.div>
@@ -190,7 +319,7 @@ function SkeletonCard() {
   )
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Roster() {
   const { players, loading } = usePlayers()
