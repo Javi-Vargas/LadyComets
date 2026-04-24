@@ -4,6 +4,7 @@ import Home from '@/pages/Home'
 import Roster from '@/pages/Roster'
 import Schedule from '@/pages/Schedule'
 import News from '@/pages/News'
+import About from '@/pages/About'
 
 function NotFound() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="/roster" component={Roster} />
         <Route path="/schedule" component={Schedule} />
         <Route path="/news" component={News} />
+        <Route path="/about" component={About} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

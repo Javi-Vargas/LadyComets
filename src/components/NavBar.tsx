@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'wouter'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, Users, Calendar, Newspaper, Ticket } from 'lucide-react'
+import { Home, Users, Calendar, Newspaper, Info, Ticket } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { path: '/roster', label: 'Roster', icon: Users },
   { path: '/schedule', label: 'Schedule', icon: Calendar },
   { path: '/news', label: 'News', icon: Newspaper },
+  { path: '/about', label: 'About', icon: Info },
 ]
 
 export default function NavBar() {
