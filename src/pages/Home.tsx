@@ -1,9 +1,10 @@
-import { useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link } from 'wouter'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { Ticket, ChevronRight } from 'lucide-react'
 import CountdownTimer from '@/components/CountdownTimer'
 import { getNextGame } from '@/data/schedule'
+import { supabase, getContentImageUrl, type DbContentItem } from '@/lib/supabase'
 
 const nextGame = getNextGame()
 
@@ -15,31 +16,30 @@ const STANDINGS = [
   { team: 'Wings', w: 17, l: 13 },
 ]
 
-/* ── Bento grid cards ── */
-const BENTO = [
-  {
-    id: 'featured-story',
-    colSpan: 'md:col-span-2',
-    rowSpan: 'md:row-span-2',
-    category: 'FEATURE',
-    title: 'LADY COMETS BLAZE INTO PLAYOFFS WITH RECORD SEASON',
-    excerpt:
-      'After 26 consecutive wins, the Lady Comets are rewriting the record books and redefining what women\'s basketball looks like in 2026.',
-    image: 'https://images.unsplash.com/photo-1546519638405-a9d1bbe7aa73?w=800&q=80',
-    accent: 'hsl(var(--primary))',
-    large: true,
-  },
-  {
-    id: 'player-spotlight',
-    colSpan: 'md:col-span-1',
-    rowSpan: 'md:row-span-1',
-    category: 'PLAYER SPOTLIGHT',
-    title: 'ZARA VANCE DROPS 42 PTS IN HISTORIC COMEBACK',
-    excerpt: 'The Comet does it again.',
-    image: 'https://images.unsplash.com/photo-1504450758481-7338eba7524a?w=600&q=80',
-    accent: 'hsl(var(--secondary))',
-    large: false,
-  },
+/* ── Team season stats ── */
+const TEAM_STATS = [
+  { value: '26', label: 'Wins This Season' },
+  { value: '98.4', label: 'Avg Points Per Game' },
+]
+
+/* ── Type for all bento grid items ── */
+interface BentoCardData {
+  id: string
+  colSpan: string
+  rowSpan: string
+  category: string
+  title: string
+  excerpt?: string | null
+  image?: string | null
+  accent: string
+  large: boolean
+  instagram_url?: string | null
+  isTicket?: boolean
+  isStandings?: boolean
+}
+
+/* Utility cards that are always shown (not CMS-managed) */
+const UTILITY_CARDS: BentoCardData[] = [
   {
     id: 'tickets-cta',
     colSpan: 'md:col-span-1',
@@ -49,8 +49,8 @@ const BENTO = [
     excerpt: "Home court. Playoff energy. Get your seats before they're gone.",
     image: null,
     accent: 'hsl(var(--accent))',
-    isTicket: true,
     large: false,
+    isTicket: true,
   },
   {
     id: 'standings',
@@ -59,34 +59,40 @@ const BENTO = [
     category: 'STANDINGS',
     title: 'EASTERN CONFERENCE',
     accent: 'hsl(var(--muted))',
+    large: false,
     isStandings: true,
-    large: false,
-  },
-  {
-    id: 'social-hype',
-    colSpan: 'md:col-span-2',
-    rowSpan: 'md:row-span-1',
-    category: 'THE CULTURE',
-    title: 'THE COMET EFFECT IS REAL — AND THE WHOLE LEAGUE KNOWS IT',
-    excerpt: "From the court to the runway, Lady Comets players are rewriting what it means to be an athlete.",
-    image: 'https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?w=800&q=80',
-    accent: 'hsl(var(--secondary))',
-    large: false,
   },
 ]
 
-/* ── Team season stats ── */
-const TEAM_STATS = [
-  { value: '26', label: 'Wins This Season' },
-  { value: '98.4', label: 'Avg Points Per Game' },
-]
+/* Maps DB type slug → display category label */
+const CATEGORY_LABELS: Record<string, string> = {
+  feature: 'FEATURE',
+  player_spotlight: 'PLAYER SPOTLIGHT',
+  culture: 'THE CULTURE',
+  game_recap: 'GAME RECAP',
+  training: 'TRAINING',
+  merch: 'MERCH',
+  general: 'NEWS',
+}
+
+function dbItemToBentoCard(item: DbContentItem): BentoCardData {
+  return {
+    id: String(item.id),
+    colSpan: item.col_span ?? 'md:col-span-1',
+    rowSpan: item.row_span ?? 'md:row-span-1',
+    category: CATEGORY_LABELS[item.type] ?? item.type.toUpperCase().replace(/_/g, ' '),
+    title: item.title,
+    excerpt: item.excerpt,
+    image: getContentImageUrl(item),
+    accent: item.accent ?? 'hsl(var(--primary))',
+    large: item.large,
+    instagram_url: item.instagram_url,
+  }
+}
 
 /* ── Bento card ── */
-function BentoCard({ card }: { card: typeof BENTO[number] }) {
-  const isTicket = 'isTicket' in card && card.isTicket
-  const isStandings = 'isStandings' in card && card.isStandings
-
-  if (isTicket) {
+function BentoCard({ card }: { card: BentoCardData }) {
+  if (card.isTicket) {
     return (
       <div className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group`}>
         <div
@@ -114,7 +120,7 @@ function BentoCard({ card }: { card: typeof BENTO[number] }) {
     )
   }
 
-  if (isStandings) {
+  if (card.isStandings) {
     return (
       <div className={`${card.colSpan} ${card.rowSpan} h-full p-5 glass-panel flex flex-col`}>
         <div className="flex items-center justify-between mb-4">
@@ -156,8 +162,19 @@ function BentoCard({ card }: { card: typeof BENTO[number] }) {
         >
           {card.title}
         </h3>
-        {'excerpt' in card && card.excerpt && (
+        {card.excerpt && (
           <p className="text-sm text-white/50 mt-2 line-clamp-2">{card.excerpt}</p>
+        )}
+        {card.instagram_url && (
+          <a
+            href={card.instagram_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="mt-2 self-start text-[10px] font-bold text-pink-400/60 hover:text-pink-400 transition-colors uppercase tracking-widest"
+          >
+            View on Instagram ↗
+          </a>
         )}
       </div>
     </div>
@@ -169,6 +186,27 @@ export default function Home() {
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] })
   const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '0%'])
   const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 1])
+
+  const [feedItems, setFeedItems] = useState<BentoCardData[]>([])
+  const [feedLoading, setFeedLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadFeed() {
+      const { data } = await supabase
+        .from('content_items')
+        .select('*')
+        .eq('section', 'feed')
+        .eq('published', true)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: false })
+      setFeedItems(((data ?? []) as DbContentItem[]).map(dbItemToBentoCard))
+      setFeedLoading(false)
+    }
+    void loadFeed()
+  }, [])
+
+  /* Merge DB content cards with always-present utility cards */
+  const allBentoItems = [...feedItems, ...UTILITY_CARDS]
 
   return (
     <div>
@@ -298,11 +336,17 @@ export default function Home() {
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-xs font-black uppercase tracking-widest text-white/30 mb-8">The Feed</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[220px]">
-            {BENTO.map((card) => (
-              <BentoCard key={card.id} card={card} />
-            ))}
-          </div>
+          {feedLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[220px]">
+              {allBentoItems.map((card) => (
+                <BentoCard key={card.id} card={card} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </div>

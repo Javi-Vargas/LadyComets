@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'wouter'
-import { supabase, getPhotoUrl, type DbPlayer, type DbGame, type DbPlayerGameStats } from '@/lib/supabase'
+import { supabase, getPhotoUrl, getContentImageUrl, type DbPlayer, type DbGame, type DbPlayerGameStats, type DbContentItem } from '@/lib/supabase'
 import { allGames } from '@/data/schedule'
 import { cn } from '@/lib/utils'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
@@ -1084,6 +1084,695 @@ function GamesTab() {
   )
 }
 
+// ── Content CRUD ──────────────────────────────────────────────────────────────
+
+const FEED_TYPES = [
+  { value: 'feature', label: 'Feature' },
+  { value: 'player_spotlight', label: 'Player Spotlight' },
+  { value: 'culture', label: 'The Culture' },
+  { value: 'general', label: 'General' },
+] as const
+
+const NEWS_TYPES = [
+  { value: 'feature', label: 'Feature' },
+  { value: 'culture', label: 'Culture' },
+  { value: 'game_recap', label: 'Game Recap' },
+  { value: 'training', label: 'Training' },
+  { value: 'merch', label: 'Merch' },
+  { value: 'general', label: 'General' },
+] as const
+
+const COL_SPAN_OPTIONS = [
+  { value: 'md:col-span-1', label: '1 Column' },
+  { value: 'md:col-span-2', label: '2 Columns (Wide)' },
+  { value: 'md:col-span-3', label: '3 Columns (Full)' },
+] as const
+
+const ROW_SPAN_OPTIONS = [
+  { value: 'md:row-span-1', label: '1 Row' },
+  { value: 'md:row-span-2', label: '2 Rows (Tall)' },
+] as const
+
+interface ContentFormState {
+  section: 'feed' | 'news'
+  type: string
+  title: string
+  excerpt: string
+  imageUrl: string
+  imageFile: File | null
+  imagePreview: string | null
+  date: string
+  readTime: string
+  featured: boolean
+  wide: boolean
+  colSpan: string
+  rowSpan: string
+  large: boolean
+  accent: string
+  instagramUrl: string
+  published: boolean
+  sortOrder: string
+}
+
+const EMPTY_CONTENT_FORM: ContentFormState = {
+  section: 'news',
+  type: 'general',
+  title: '',
+  excerpt: '',
+  imageUrl: '',
+  imageFile: null,
+  imagePreview: null,
+  date: '',
+  readTime: '',
+  featured: false,
+  wide: false,
+  colSpan: 'md:col-span-1',
+  rowSpan: 'md:row-span-1',
+  large: false,
+  accent: 'hsl(var(--primary))',
+  instagramUrl: '',
+  published: true,
+  sortOrder: '0',
+}
+
+function ToggleBtn({ label, active, onToggle }: { label: string; active: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={cn(
+        'flex items-center gap-1.5 px-3 py-2 rounded text-xs font-bold transition-all',
+        active ? 'text-green-400' : 'text-white/50 hover:text-white/80',
+      )}
+      style={{
+        background: active ? 'hsl(140 60% 12%)' : 'hsl(220 30% 17%)',
+        border: active ? '1.5px solid hsl(140 60% 45%)' : '1px solid hsl(220 20% 25%)',
+      }}
+    >
+      {active && <Check className="w-3 h-3 stroke-[3px]" />}
+      {label}
+    </button>
+  )
+}
+
+interface ContentFormProps {
+  editing: DbContentItem | null
+  onSaved: () => void
+  onCancel: () => void
+}
+
+function ContentForm({ editing, onSaved, onCancel }: ContentFormProps) {
+  const [form, setForm] = useState<ContentFormState>(EMPTY_CONTENT_FORM)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing) {
+      setForm({
+        section: editing.section,
+        type: editing.type,
+        title: editing.title,
+        excerpt: editing.excerpt ?? '',
+        imageUrl: editing.image_url ?? '',
+        imageFile: null,
+        imagePreview: getContentImageUrl(editing),
+        date: editing.date ?? '',
+        readTime: editing.read_time ?? '',
+        featured: editing.featured,
+        wide: editing.wide,
+        colSpan: editing.col_span ?? 'md:col-span-1',
+        rowSpan: editing.row_span ?? 'md:row-span-1',
+        large: editing.large,
+        accent: editing.accent ?? 'hsl(var(--primary))',
+        instagramUrl: editing.instagram_url ?? '',
+        published: editing.published,
+        sortOrder: String(editing.sort_order),
+      })
+    } else {
+      setForm(EMPTY_CONTENT_FORM)
+    }
+  }, [editing])
+
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    if (!file) return
+    setForm((f) => ({ ...f, imageFile: file, imagePreview: URL.createObjectURL(file) }))
+  }
+
+  function clearImageFile() {
+    setForm((f) => ({ ...f, imageFile: null, imagePreview: f.imageUrl || null }))
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (!form.title.trim()) { setError('Title is required.'); return }
+    setSaving(true)
+    setError(null)
+    try {
+      let image_path = editing?.image_path ?? null
+      let image_url: string | null = form.imageUrl.trim() || null
+
+      if (form.imageFile) {
+        const ext = form.imageFile.name.split('.').pop() ?? 'jpg'
+        const slug = form.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)
+        const path = `content/${Date.now()}-${slug}.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from('lady-comets')
+          .upload(path, form.imageFile, { upsert: true })
+        if (uploadError) throw uploadError
+        image_path = path
+        image_url = null
+      }
+
+      const payload = {
+        section: form.section,
+        type: form.type,
+        title: form.title.trim(),
+        excerpt: form.excerpt.trim() || null,
+        image_url,
+        image_path,
+        date: form.date.trim() || null,
+        read_time: form.readTime.trim() || null,
+        featured: form.section === 'news' ? form.featured : false,
+        wide: form.section === 'news' ? form.wide : false,
+        col_span: form.section === 'feed' ? form.colSpan : null,
+        row_span: form.section === 'feed' ? form.rowSpan : null,
+        large: form.section === 'feed' ? form.large : false,
+        accent: form.section === 'feed' ? (form.accent.trim() || null) : null,
+        instagram_url: form.instagramUrl.trim() || null,
+        published: form.published,
+        sort_order: parseInt(form.sortOrder, 10) || 0,
+      }
+
+      if (editing) {
+        const { error: err } = await supabase.from('content_items').update(payload).eq('id', editing.id)
+        if (err) throw err
+      } else {
+        const { error: err } = await supabase
+          .from('content_items')
+          .insert({ ...payload, created_at: new Date().toISOString() })
+        if (err) throw err
+      }
+      onSaved()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save content.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inputCls = 'w-full px-3 py-2.5 rounded text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-primary'
+  const inputStyle = { background: 'hsl(220 30% 17%)', border: '1px solid hsl(220 20% 25%)' }
+  const labelCls = 'block text-xs font-bold text-white/60 uppercase tracking-wider mb-1.5'
+  const typeOptions = form.section === 'feed' ? FEED_TYPES : NEWS_TYPES
+  const previewSrc = form.imagePreview ?? (form.imageUrl.startsWith('http') ? form.imageUrl : null)
+
+  return (
+    <div
+      className="rounded-xl p-6 mb-6"
+      style={{ background: 'hsl(220 30% 12%)', border: '1px solid hsl(220 20% 20%)' }}
+    >
+      <h3 className="text-lg font-bold text-white mb-5">
+        {editing ? 'Edit content' : 'New content'}
+      </h3>
+
+      <form onSubmit={(e) => { void handleSubmit(e) }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+          {/* Section */}
+          <div>
+            <label className={labelCls}>Section <span className="text-primary">*</span></label>
+            <select
+              value={form.section}
+              onChange={(e) => setForm((f) => ({
+                ...f,
+                section: e.target.value as 'feed' | 'news',
+                type: 'general',
+              }))}
+              className={inputCls}
+              style={inputStyle}
+            >
+              <option value="news">News</option>
+              <option value="feed">Feed (Home Bento)</option>
+            </select>
+          </div>
+
+          {/* Type */}
+          <div>
+            <label className={labelCls}>Type / Category <span className="text-primary">*</span></label>
+            <select
+              value={form.type}
+              onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+              className={inputCls}
+              style={inputStyle}
+            >
+              {typeOptions.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Title */}
+          <div className="md:col-span-2">
+            <label className={labelCls}>Title <span className="text-primary">*</span></label>
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              className={inputCls}
+              style={inputStyle}
+              required
+            />
+          </div>
+
+          {/* Excerpt */}
+          <div className="md:col-span-2">
+            <label className={labelCls}>Excerpt</label>
+            <textarea
+              value={form.excerpt}
+              onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))}
+              rows={2}
+              className={`${inputCls} resize-y`}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Image */}
+          <div className="md:col-span-2">
+            <label className={labelCls}>Image</label>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={form.imageUrl}
+                onChange={(e) => setForm((f) => ({
+                  ...f,
+                  imageUrl: e.target.value,
+                  imagePreview: form.imageFile ? f.imagePreview : null,
+                }))}
+                placeholder="Paste image URL (e.g. from Instagram post)"
+                className={inputCls}
+                style={inputStyle}
+              />
+              <div className="flex items-center gap-3 flex-wrap">
+                {previewSrc && (
+                  <img src={previewSrc} alt="preview" className="w-16 h-16 object-cover rounded shrink-0" />
+                )}
+                <div className="flex items-center gap-2 flex-wrap text-sm text-white/50">
+                  <span className="text-xs">Or upload:</span>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="text-sm text-white/60 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-bold file:bg-white/10 file:text-white/70 hover:file:bg-white/20 cursor-pointer"
+                  />
+                  {form.imageFile && (
+                    <button
+                      type="button"
+                      onClick={clearImageFile}
+                      className="text-xs text-red-400 hover:text-red-300 font-bold"
+                    >
+                      Remove file
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Instagram URL */}
+          <div className="md:col-span-2">
+            <label className={labelCls}>
+              Instagram Post URL{' '}
+              <span className="text-white/30 normal-case font-normal">(optional — adds IG link on the card)</span>
+            </label>
+            <input
+              type="text"
+              value={form.instagramUrl}
+              onChange={(e) => setForm((f) => ({ ...f, instagramUrl: e.target.value }))}
+              placeholder="https://www.instagram.com/p/..."
+              className={inputCls}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Date */}
+          <div>
+            <label className={labelCls}>Date</label>
+            <input
+              type="text"
+              value={form.date}
+              onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+              placeholder="e.g. Apr 18, 2026"
+              className={inputCls}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* News: Read time */}
+          {form.section === 'news' && (
+            <div>
+              <label className={labelCls}>Read Time</label>
+              <input
+                type="text"
+                value={form.readTime}
+                onChange={(e) => setForm((f) => ({ ...f, readTime: e.target.value }))}
+                placeholder="e.g. 5 min read"
+                className={inputCls}
+                style={inputStyle}
+              />
+            </div>
+          )}
+
+          {/* News: Featured + Wide */}
+          {form.section === 'news' && (
+            <div className="md:col-span-2 flex gap-3 flex-wrap">
+              <ToggleBtn
+                label="Featured (hero card)"
+                active={form.featured}
+                onToggle={() => setForm((f) => ({ ...f, featured: !f.featured }))}
+              />
+              <ToggleBtn
+                label="Wide (2-col span)"
+                active={form.wide}
+                onToggle={() => setForm((f) => ({ ...f, wide: !f.wide }))}
+              />
+            </div>
+          )}
+
+          {/* Feed: Layout options */}
+          {form.section === 'feed' && (
+            <>
+              <div>
+                <label className={labelCls}>Column Span</label>
+                <select
+                  value={form.colSpan}
+                  onChange={(e) => setForm((f) => ({ ...f, colSpan: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                >
+                  {COL_SPAN_OPTIONS.map(({ value, label }) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Row Span</label>
+                <select
+                  value={form.rowSpan}
+                  onChange={(e) => setForm((f) => ({ ...f, rowSpan: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                >
+                  {ROW_SPAN_OPTIONS.map(({ value, label }) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-2 flex gap-3 flex-wrap">
+                <ToggleBtn
+                  label="Large card (bigger title)"
+                  active={form.large}
+                  onToggle={() => setForm((f) => ({ ...f, large: !f.large }))}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className={labelCls}>Accent Color</label>
+                <input
+                  type="text"
+                  value={form.accent}
+                  onChange={(e) => setForm((f) => ({ ...f, accent: e.target.value }))}
+                  placeholder="e.g. hsl(var(--primary))"
+                  className={inputCls}
+                  style={inputStyle}
+                />
+              </div>
+            </>
+          )}
+
+          {/* Published + Sort order */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <ToggleBtn
+              label="Published"
+              active={form.published}
+              onToggle={() => setForm((f) => ({ ...f, published: !f.published }))}
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Sort Order</label>
+            <input
+              type="number"
+              value={form.sortOrder}
+              onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value }))}
+              className={inputCls}
+              style={inputStyle}
+            />
+          </div>
+        </div>
+
+        {error && (
+          <p className="mt-4 text-red-400 text-xs font-medium bg-red-500/10 border border-red-500/20 rounded px-3 py-2">
+            {error}
+          </p>
+        )}
+
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-5 py-2 text-sm font-bold text-white/60 hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 rounded text-sm font-black uppercase tracking-wider text-white disabled:opacity-60 transition-opacity"
+            style={{ background: 'hsl(26 91% 51%)' }}
+          >
+            {saving ? 'Saving…' : editing ? 'Save changes' : 'Add content'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+// ── Content Tab ────────────────────────────────────────────────────────────────
+
+type SectionFilter = 'all' | 'feed' | 'news'
+
+function typeLabel(type: string) {
+  return type.split('_').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
+}
+
+function ContentTab() {
+  const [items, setItems] = useState<DbContentItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editingItem, setEditingItem] = useState<DbContentItem | null>(null)
+  const [sectionFilter, setSectionFilter] = useState<SectionFilter>('all')
+
+  async function fetchItems() {
+    const { data } = await supabase
+      .from('content_items')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: false })
+    setItems((data as DbContentItem[]) ?? [])
+    setLoading(false)
+  }
+
+  useEffect(() => { void fetchItems() }, [])
+
+  async function handleDelete(id: number) {
+    if (!confirm('Delete this content item?')) return
+    await supabase.from('content_items').delete().eq('id', id)
+    void fetchItems()
+  }
+
+  async function togglePublished(item: DbContentItem) {
+    const next = !item.published
+    await supabase.from('content_items').update({ published: next }).eq('id', item.id)
+    setItems((prev) => prev.map((i) => i.id === item.id ? { ...i, published: next } : i))
+  }
+
+  function openAdd() {
+    setEditingItem(null)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openEdit(item: DbContentItem) {
+    setEditingItem(item)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function handleSaved() {
+    setShowForm(false)
+    setEditingItem(null)
+    void fetchItems()
+  }
+
+  const filtered = sectionFilter === 'all' ? items : items.filter((i) => i.section === sectionFilter)
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-white">Content</h2>
+        {!showForm && (
+          <button
+            onClick={openAdd}
+            className="px-4 py-2 rounded text-sm font-black uppercase tracking-wider text-white"
+            style={{ background: 'hsl(26 91% 51%)' }}
+          >
+            + Add content
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <ContentForm
+          editing={editingItem}
+          onSaved={handleSaved}
+          onCancel={() => { setShowForm(false); setEditingItem(null) }}
+        />
+      )}
+
+      {/* Section filter */}
+      {!showForm && (
+        <div className="flex gap-2 mb-5">
+          {(['all', 'feed', 'news'] as SectionFilter[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setSectionFilter(s)}
+              className={cn(
+                'px-3 py-1.5 text-xs font-bold rounded capitalize transition-all',
+                sectionFilter === s ? 'text-white' : 'text-white/40 hover:text-white/70',
+              )}
+              style={{
+                background: sectionFilter === s ? 'hsl(220 30% 20%)' : 'hsl(220 30% 14%)',
+                border: sectionFilter === s ? '1px solid hsl(220 20% 35%)' : '1px solid hsl(220 20% 20%)',
+              }}
+            >
+              {s === 'all' ? 'All' : s === 'feed' ? 'Feed' : 'News'}
+            </button>
+          ))}
+          <span className="ml-2 text-xs text-white/20 self-center">
+            {filtered.length} item{filtered.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div
+          className="rounded-xl py-16 text-center"
+          style={{ border: '1px solid hsl(220 20% 20%)' }}
+        >
+          <p className="text-white/40 text-sm">
+            No content yet. Click &quot;Add content&quot; to get started.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((item) => {
+            const imgSrc = getContentImageUrl(item)
+            return (
+              <div
+                key={item.id}
+                className="flex items-center justify-between px-4 py-3 rounded-lg"
+                style={{ background: 'hsl(220 30% 12%)', border: '1px solid hsl(220 20% 20%)' }}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-12 h-12 rounded overflow-hidden shrink-0 bg-white/5">
+                    {imgSrc ? (
+                      <img src={imgSrc} alt={item.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white/20 text-[10px] font-black">
+                        {item.section.toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span
+                        className={cn(
+                          'text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 shrink-0',
+                          item.section === 'feed'
+                            ? 'bg-primary/20 text-primary'
+                            : 'bg-blue-500/20 text-blue-400',
+                        )}
+                      >
+                        {item.section}
+                      </span>
+                      <span className="text-[10px] text-white/40 uppercase tracking-widest shrink-0">
+                        {typeLabel(item.type)}
+                      </span>
+                      {item.instagram_url && (
+                        <a
+                          href={item.instagram_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-pink-400/60 hover:text-pink-400 font-bold shrink-0 transition-colors"
+                          title="View Instagram post"
+                        >
+                          IG ↗
+                        </a>
+                      )}
+                    </div>
+                    <p className="text-sm font-bold text-white leading-tight truncate">{item.title}</p>
+                    <p className="text-xs text-white/30 mt-0.5">
+                      {[item.date, item.read_time].filter(Boolean).join(' · ')}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => { void togglePublished(item) }}
+                    className={cn(
+                      'px-2 py-1 text-xs font-bold rounded transition-all',
+                      item.published ? 'text-green-400' : 'text-white/30 hover:text-white/60',
+                    )}
+                    style={{
+                      background: item.published ? 'hsl(140 60% 10%)' : 'hsl(220 30% 14%)',
+                      border: item.published ? '1px solid hsl(140 60% 30%)' : '1px solid hsl(220 20% 22%)',
+                    }}
+                    title={item.published ? 'Live — click to unpublish' : 'Draft — click to publish'}
+                  >
+                    {item.published ? 'Live' : 'Draft'}
+                  </button>
+                  <button
+                    onClick={() => openEdit(item)}
+                    className="px-3 py-1.5 text-xs font-bold text-white/70 hover:text-white rounded transition-colors"
+                    style={{ border: '1px solid hsl(220 20% 30%)' }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => { void handleDelete(item.id) }}
+                    className="px-3 py-1.5 text-xs font-bold text-red-400 hover:text-red-300 rounded transition-colors"
+                    style={{ border: '1px solid hsl(0 50% 30%)' }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -1161,11 +1850,7 @@ export default function AdminDashboard() {
 
         {tab === 'games' && <GamesTab />}
 
-        {tab === 'content' && (
-          <div className="text-center py-16">
-            <p className="text-white/30 text-sm">Content management coming soon.</p>
-          </div>
-        )}
+        {tab === 'content' && <ContentTab />}
       </main>
     </div>
   )

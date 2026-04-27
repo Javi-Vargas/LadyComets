@@ -77,3 +77,34 @@ export function getPhotoUrl(photoPath: string | null): string | null {
   const { data } = supabase.storage.from('lady-comets').getPublicUrl(photoPath)
   return data.publicUrl
 }
+
+/** Shape returned by the `content_items` table in Supabase. */
+export type DbContentItem = {
+  id: number
+  section: 'feed' | 'news'
+  type: string            // 'feature' | 'player_spotlight' | 'culture' | 'game_recap' | 'training' | 'merch' | 'general'
+  title: string
+  excerpt: string | null
+  image_url: string | null    // external URL (e.g. pasted from Instagram)
+  image_path: string | null   // Supabase Storage path inside the lady-comets bucket
+  date: string | null
+  read_time: string | null
+  featured: boolean
+  wide: boolean
+  col_span: string | null
+  row_span: string | null
+  large: boolean
+  accent: string | null
+  instagram_url: string | null
+  published: boolean
+  sort_order: number
+  created_at: string
+}
+
+/**
+ * Returns the best available image URL for a content item.
+ * Prefers an uploaded file (image_path) over a pasted URL (image_url).
+ */
+export function getContentImageUrl(item: Pick<DbContentItem, 'image_path' | 'image_url'>): string | null {
+  return getPhotoUrl(item.image_path) ?? item.image_url ?? null
+}
