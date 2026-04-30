@@ -191,7 +191,7 @@ function BentoCard({ card, cometsWins, cometsLosses }: { card: BentoCardData; co
   }
 
   return (
-    <Link href={`/news/${card.id}`} className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group block`}>
+    <Link href="/news" className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group block`}>
       {inner}
     </Link>
   )
