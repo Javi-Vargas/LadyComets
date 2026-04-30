@@ -56,7 +56,7 @@ function StaffCard({ member, onClick }: { member: Staff; onClick: (m: Staff) => 
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group cursor-pointer overflow-hidden border border-white/10 hover:border-primary/40 transition-colors duration-300"
+      className="group cursor-pointer overflow-hidden border border-white/10 hover:border-primary/40 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
       onClick={() => onClick(member)}
     >
       {/* Photo / initials */}

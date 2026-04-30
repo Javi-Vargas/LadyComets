@@ -186,14 +186,14 @@ function BentoCard({ card, cometsWins, cometsLosses }: { card: BentoCardData; co
 
   if (card.instagram_url) {
     return (
-      <div className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group`}>
+      <div className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.45)]`}>
         {inner}
       </div>
     )
   }
 
   return (
-    <Link href="/news" className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group block`}>
+    <Link href="/news" className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group block transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.45)]`}>
       {inner}
     </Link>
   )

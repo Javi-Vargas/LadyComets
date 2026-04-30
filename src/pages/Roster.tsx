@@ -40,7 +40,7 @@ function PlayerCard({ player, onClick }: { player: Player; onClick: (p: Player) 
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden cursor-pointer group"
+      className="relative overflow-hidden cursor-pointer group border border-white/5 hover:border-white/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
       onClick={() => onClick(player)}
       data-testid={`player-card-${player.id}`}
     >

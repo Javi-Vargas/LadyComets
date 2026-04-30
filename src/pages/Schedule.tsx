@@ -231,10 +231,10 @@ export default function Schedule() {
               className={cn(
                 'relative overflow-hidden group',
                 game.isNext
-                  ? 'border border-primary/50 bg-primary/5'
+                  ? 'border border-primary/50 bg-primary/5 transition-all duration-300 hover:bg-primary/[0.08]'
                   : game.past
-                  ? 'border border-white/5 opacity-60'
-                  : 'border border-white/10 hover:border-white/20',
+                  ? 'border border-white/5 opacity-60 transition-all duration-200 hover:opacity-75'
+                  : 'border border-white/10 hover:border-white/20 hover:bg-white/[0.03] transition-all duration-300',
               )}
             >
               {game.isNext && (

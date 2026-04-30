@@ -86,7 +86,7 @@ export default function News() {
             <motion.article
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="relative overflow-hidden cursor-pointer group mb-4"
+              className="relative overflow-hidden cursor-pointer group mb-4 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
               data-testid="news-featured"
             >
               <div className="relative h-[420px] md:h-[520px] overflow-hidden">
@@ -145,7 +145,7 @@ export default function News() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 + i * 0.06 }}
                   className={cn(
-                    'relative overflow-hidden cursor-pointer group border border-white/10 hover:border-white/20 transition-colors',
+                    'relative overflow-hidden cursor-pointer group border border-white/10 hover:border-white/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.45)]',
                     article.wide && 'md:col-span-2',
                   )}
                   data-testid={`news-article-${article.id}`}
