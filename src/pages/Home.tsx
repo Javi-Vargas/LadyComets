@@ -1,25 +1,21 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'wouter'
-import { motion, useScroll, useTransform } from 'framer-motion'
-import { Ticket, ChevronRight } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { ChevronRight } from 'lucide-react'
 import CountdownTimer from '@/components/CountdownTimer'
 import { getNextGame } from '@/data/schedule'
-import { supabase, getContentImageUrl, type DbContentItem } from '@/lib/supabase'
+import { supabase, getContentImageUrl, type DbContentItem, type DbGame } from '@/lib/supabase'
+
+// Set to true once a ticketing provider is configured
+const SHOW_TICKETS = false
 
 const nextGame = getNextGame()
 
-/* ── Standings ── */
-const STANDINGS = [
-  { team: 'Lady Comets', w: 26, l: 4 },
-  { team: 'Storm', w: 22, l: 8 },
+/* ── Standings — opponent rows are static; Lady Comets row is derived live ── */
+const OPPONENT_STANDINGS = [
+  { team: 'Storm',   w: 22, l: 8  },
   { team: 'Mystics', w: 19, l: 11 },
-  { team: 'Wings', w: 17, l: 13 },
-]
-
-/* ── Team season stats ── */
-const TEAM_STATS = [
-  { value: '26', label: 'Wins This Season' },
-  { value: '98.4', label: 'Avg Points Per Game' },
+  { team: 'Wings',   w: 17, l: 13 },
 ]
 
 /* ── Type for all bento grid items ── */
@@ -38,31 +34,30 @@ interface BentoCardData {
   isStandings?: boolean
 }
 
-/* Utility cards that are always shown (not CMS-managed) */
-const UTILITY_CARDS: BentoCardData[] = [
-  {
-    id: 'tickets-cta',
-    colSpan: 'md:col-span-1',
-    rowSpan: 'md:row-span-1',
-    category: 'LIVE',
-    title: 'MAY 15 VS STORM',
-    excerpt: "Home court. Playoff energy. Get your seats before they're gone.",
-    image: null,
-    accent: 'hsl(var(--accent))',
-    large: false,
-    isTicket: true,
-  },
-  {
-    id: 'standings',
-    colSpan: 'md:col-span-1',
-    rowSpan: 'md:row-span-1',
-    category: 'STANDINGS',
-    title: 'EASTERN CONFERENCE',
-    accent: 'hsl(var(--muted))',
-    large: false,
-    isStandings: true,
-  },
-]
+/* Utility cards injected after CMS feed cards */
+const TICKET_CARD: BentoCardData = {
+  id: 'tickets-cta',
+  colSpan: 'md:col-span-1',
+  rowSpan: 'md:row-span-1',
+  category: 'LIVE',
+  title: nextGame ? `${nextGame.displayDate.toUpperCase()} VS ${nextGame.opponent.toUpperCase()}` : 'UPCOMING',
+  excerpt: "Home court. Playoff energy. Get your seats before they're gone.",
+  image: null,
+  accent: 'hsl(var(--accent))',
+  large: false,
+  isTicket: true,
+}
+
+const STANDINGS_CARD: BentoCardData = {
+  id: 'standings',
+  colSpan: 'md:col-span-1',
+  rowSpan: 'md:row-span-1',
+  category: 'STANDINGS',
+  title: 'EASTERN CONFERENCE',
+  accent: 'hsl(var(--muted))',
+  large: false,
+  isStandings: true,
+}
 
 /* Maps DB type slug → display category label */
 const CATEGORY_LABELS: Record<string, string> = {
@@ -91,7 +86,7 @@ function dbItemToBentoCard(item: DbContentItem): BentoCardData {
 }
 
 /* ── Bento card ── */
-function BentoCard({ card }: { card: BentoCardData }) {
+function BentoCard({ card, cometsWins, cometsLosses }: { card: BentoCardData; cometsWins: number; cometsLosses: number }) {
   if (card.isTicket) {
     return (
       <div className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group`}>
@@ -110,8 +105,7 @@ function BentoCard({ card }: { card: BentoCardData }) {
               className="bg-primary text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-colors duration-300 skew-x-[-8deg]"
             >
               <span className="skew-x-[8deg] flex items-center gap-1">
-                <Ticket className="w-3 h-3" />
-                Get Tickets
+                View Schedule
               </span>
             </Link>
           </div>
@@ -121,23 +115,31 @@ function BentoCard({ card }: { card: BentoCardData }) {
   }
 
   if (card.isStandings) {
+    const standings = [
+      { team: 'Lady Comets', w: cometsWins, l: cometsLosses },
+      ...OPPONENT_STANDINGS,
+    ].sort((a, b) => b.w - a.w)
+
     return (
       <div className={`${card.colSpan} ${card.rowSpan} h-full p-5 glass-panel flex flex-col`}>
         <div className="flex items-center justify-between mb-4">
           <span className="text-sm font-black uppercase tracking-wider text-white mb-3">{card.title}</span>
         </div>
         <div className="space-y-2 flex-1">
-          {STANDINGS.map((row, i) => (
-            <div key={row.team} className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <span className={i === 0 ? 'text-primary font-black' : 'text-white/40'}>{i + 1}</span>
-                <span className={i === 0 ? 'text-white font-bold' : 'text-white/60'}>{row.team}</span>
+          {standings.map((row, i) => {
+            const isComets = row.team === 'Lady Comets'
+            return (
+              <div key={row.team} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
+                  <span className={isComets ? 'text-primary font-black' : 'text-white/40'}>{i + 1}</span>
+                  <span className={isComets ? 'text-white font-bold' : 'text-white/60'}>{row.team}</span>
+                </div>
+                <span className={isComets ? 'text-primary font-black' : 'text-white/40'}>
+                  {row.w}–{row.l}
+                </span>
               </div>
-              <span className={i === 0 ? 'text-primary font-black' : 'text-white/40'}>
-                {row.w}–{row.l}
-              </span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     )
@@ -182,13 +184,10 @@ function BentoCard({ card }: { card: BentoCardData }) {
 }
 
 export default function Home() {
-  const heroRef = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] })
-  const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '0%'])
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 1])
-
   const [feedItems, setFeedItems] = useState<BentoCardData[]>([])
   const [feedLoading, setFeedLoading] = useState(true)
+  const [cometsWins, setCometsWins] = useState(0)
+  const [cometsLosses, setCometsLosses] = useState(0)
 
   useEffect(() => {
     async function loadFeed() {
@@ -202,17 +201,31 @@ export default function Home() {
       setFeedItems(((data ?? []) as DbContentItem[]).map(dbItemToBentoCard))
       setFeedLoading(false)
     }
+
+    async function loadRecord() {
+      const { data } = await supabase
+        .from('games')
+        .select('result')
+        .not('result', 'is', null)
+      const games = (data ?? []) as Pick<DbGame, 'result'>[]
+      setCometsWins(games.filter((g) => g.result === 'W').length)
+      setCometsLosses(games.filter((g) => g.result === 'L').length)
+    }
+
     void loadFeed()
+    void loadRecord()
   }, [])
 
-  /* Merge DB content cards with always-present utility cards */
-  const allBentoItems = [...feedItems, ...UTILITY_CARDS]
+  /* Merge DB content cards with utility cards; hide ticket CTA until ticketing is ready */
+  const utilityCards = SHOW_TICKETS
+    ? [TICKET_CARD, STANDINGS_CARD]
+    : [STANDINGS_CARD]
+  const allBentoItems = [...feedItems, ...utilityCards]
 
   return (
     <div>
       {/* ── HERO ── */}
       <section
-        ref={heroRef}
         data-testid="hero-section"
         className="relative min-h-screen flex items-center justify-center overflow-hidden"
       >
@@ -238,7 +251,6 @@ export default function Home() {
 
         {/* Content */}
         <motion.div
-          style={{ y: heroY, opacity: heroOpacity }}
           className="relative z-10 text-center px-4 max-w-6xl mx-auto"
         >
           <motion.div
@@ -289,12 +301,11 @@ export default function Home() {
           >
             <Link
               href="/schedule"
-              data-testid="hero-get-tickets"
+              data-testid="hero-schedule"
               className="group relative bg-primary text-black font-black uppercase text-sm px-8 py-4 tracking-widest flex items-center gap-3 skew-x-[-8deg] hover:bg-white transition-all duration-300 shadow-[0_0_30px_rgba(255,200,40,0.45)]"
             >
               <span className="skew-x-[8deg] flex items-center gap-3">
-                <Ticket className="w-4 h-4" />
-                Get Tickets
+                View Schedule
               </span>
             </Link>
             <Link
@@ -322,12 +333,14 @@ export default function Home() {
       <section className="py-12 overflow-hidden relative">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex flex-wrap gap-12 justify-center">
-            {TEAM_STATS.map((s) => (
-              <div key={s.label} className="text-center">
-                <span className="text-6xl md:text-8xl font-black text-white tabular-nums">{s.value}</span>
-                <p className="text-xs font-bold uppercase tracking-widest text-white/30 mt-2">{s.label}</p>
-              </div>
-            ))}
+            <div className="text-center">
+              <span className="text-6xl md:text-8xl font-black text-white tabular-nums">{cometsWins}</span>
+              <p className="text-xs font-bold uppercase tracking-widest text-white/30 mt-2">Wins This Season</p>
+            </div>
+            <div className="text-center">
+              <span className="text-6xl md:text-8xl font-black text-white tabular-nums">{cometsLosses}</span>
+              <p className="text-xs font-bold uppercase tracking-widest text-white/30 mt-2">Losses This Season</p>
+            </div>
           </div>
         </div>
       </section>
@@ -343,7 +356,7 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 auto-rows-[220px]">
               {allBentoItems.map((card) => (
-                <BentoCard key={card.id} card={card} />
+                <BentoCard key={card.id} card={card} cometsWins={cometsWins} cometsLosses={cometsLosses} />
               ))}
             </div>
           )}

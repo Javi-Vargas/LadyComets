@@ -9,12 +9,33 @@ interface TimeLeft {
 }
 
 /**
+ * Parses a schedule time string like "7:00 PM ET" into a full Date.
+ * Falls back to 7:00 PM local if the string is "TBD", "Completed", or unparseable.
+ */
+function buildGameDate(dateStr: string, timeStr: string): Date {
+  const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i)
+  if (match) {
+    let hours = parseInt(match[1], 10)
+    const minutes = parseInt(match[2], 10)
+    const period = match[3].toUpperCase()
+    if (period === 'PM' && hours !== 12) hours += 12
+    if (period === 'AM' && hours === 12) hours = 0
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return new Date(`${dateStr}T${pad(hours)}:${pad(minutes)}:00`)
+  }
+  // Default fallback: 7:00 PM
+  return new Date(`${dateStr}T19:00:00`)
+}
+
+/**
  * Computed at module level — NEVER inside a component or useEffect.
  * Creating a new Date() inside a component causes a new reference on every
  * render and triggers an infinite re-render loop in the countdown effect.
  */
 const nextGame = getNextGame()
-const NEXT_GAME_TARGET: Date | null = nextGame ? new Date(`${nextGame.date}T19:00:00`) : null
+const NEXT_GAME_TARGET: Date | null = nextGame
+  ? buildGameDate(nextGame.date, nextGame.time)
+  : null
 
 function useCountdown(target: Date | null): TimeLeft {
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({ days: 0, hours: 0, minutes: 0, seconds: 0 })

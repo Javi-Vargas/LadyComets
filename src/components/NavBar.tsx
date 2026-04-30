@@ -1,13 +1,22 @@
 import { Link, useLocation } from 'wouter'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Home, Users, Calendar, Newspaper, Info, Ticket } from 'lucide-react'
+import { Users, Calendar, Newspaper, Info, Ticket, GraduationCap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { path: '/', label: 'Home', icon: Home },
+  { path: '/', label: 'Home' },
+  { path: '/roster', label: 'Roster' },
+  { path: '/schedule', label: 'Schedule' },
+  { path: '/news', label: 'News' },
+  { path: '/coaches', label: 'Coaches' },
+  { path: '/about', label: 'About' },
+]
+
+const MOBILE_NAV_ITEMS = [
   { path: '/roster', label: 'Roster', icon: Users },
   { path: '/schedule', label: 'Schedule', icon: Calendar },
   { path: '/news', label: 'News', icon: Newspaper },
+  { path: '/coaches', label: 'Coaches', icon: GraduationCap },
   { path: '/about', label: 'About', icon: Info },
 ]
 
@@ -62,7 +71,23 @@ export default function NavBar() {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-6 left-4 right-4 z-50 glass-panel rounded-[2rem] px-2 py-3 flex items-center justify-around shadow-2xl">
-        {NAV_ITEMS.map((item) => {
+        {/* Wordmark acts as Home button */}
+        <Link
+          href="/"
+          data-testid="nav-mobile-home"
+          className="flex flex-col items-center justify-center px-1"
+        >
+          <span
+            className={cn(
+              'text-[10px] font-black tracking-tight uppercase italic leading-tight text-center transition-colors duration-300',
+              location === '/' ? 'text-primary' : 'text-white/40 hover:text-white/70',
+            )}
+          >
+            Lady<br />Comets
+          </span>
+        </Link>
+
+        {MOBILE_NAV_ITEMS.map((item) => {
           const active = location === item.path
           const Icon = item.icon
           return (
@@ -74,13 +99,13 @@ export default function NavBar() {
             >
               <div
                 className={cn(
-                  'w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300',
+                  'w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300',
                   active
                     ? 'bg-primary text-black scale-110 shadow-[0_0_15px_rgba(255,200,40,0.55)]'
                     : 'bg-white/5 text-white/60 hover:bg-white/10',
                 )}
               >
-                <Icon className={cn('w-5 h-5', active && 'stroke-[2.5px]')} />
+                <Icon className={cn('w-4 h-4', active && 'stroke-[2.5px]')} />
               </div>
               <AnimatePresence>
                 {active && (

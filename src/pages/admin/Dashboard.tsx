@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'wouter'
-import { supabase, getPhotoUrl, getContentImageUrl, type DbPlayer, type DbGame, type DbPlayerGameStats, type DbContentItem } from '@/lib/supabase'
+import { supabase, getPhotoUrl, getContentImageUrl, type DbPlayer, type DbGame, type DbPlayerGameStats, type DbContentItem, type DbStaff } from '@/lib/supabase'
 import { allGames } from '@/data/schedule'
 import { cn } from '@/lib/utils'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'players' | 'games' | 'content'
+type Tab = 'players' | 'games' | 'content' | 'staff'
 const POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C'] as const
 type Pos = typeof POSITIONS[number]
 
@@ -1773,6 +1773,486 @@ function ContentTab() {
   )
 }
 
+// ── Staff Tab ─────────────────────────────────────────────────────────────────
+
+const STAFF_CATEGORIES = ['coaching', 'support'] as const
+type StaffCategory = typeof STAFF_CATEGORIES[number]
+
+interface StaffFormState {
+  name: string
+  title: string
+  category: StaffCategory
+  bio: string
+  email: string
+  phone: string
+  twitter: string
+  photoFile: File | null
+  photoPreview: string | null
+  published: boolean
+}
+
+const EMPTY_STAFF_FORM: StaffFormState = {
+  name: '',
+  title: '',
+  category: 'coaching',
+  bio: '',
+  email: '',
+  phone: '',
+  twitter: '',
+  photoFile: null,
+  photoPreview: null,
+  published: true,
+}
+
+interface StaffFormProps {
+  editing: DbStaff | null
+  onSaved: () => void
+  onCancel: () => void
+}
+
+function StaffForm({ editing, onSaved, onCancel }: StaffFormProps) {
+  const [form, setForm] = useState<StaffFormState>(EMPTY_STAFF_FORM)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (editing) {
+      setForm({
+        name: editing.name,
+        title: editing.title,
+        category: editing.category,
+        bio: editing.bio ?? '',
+        email: editing.email ?? '',
+        phone: editing.phone ?? '',
+        twitter: editing.twitter ?? '',
+        photoFile: null,
+        photoPreview: getPhotoUrl(editing.photo_path),
+        published: editing.published,
+      })
+    } else {
+      setForm(EMPTY_STAFF_FORM)
+    }
+  }, [editing])
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null
+    if (!file) return
+    setForm((f) => ({ ...f, photoFile: file, photoPreview: URL.createObjectURL(file) }))
+  }
+
+  function removePhoto() {
+    setForm((f) => ({ ...f, photoFile: null, photoPreview: null }))
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.name.trim()) { setError('Name is required.'); return }
+    if (!form.title.trim()) { setError('Title is required.'); return }
+
+    setSaving(true)
+    setError(null)
+
+    try {
+      let photo_path = editing?.photo_path ?? null
+
+      if (form.photoFile) {
+        const ext = form.photoFile.name.split('.').pop() ?? 'jpg'
+        const path = `staff/${Date.now()}-${form.name.toLowerCase().replace(/\s+/g, '-')}.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from('lady-comets')
+          .upload(path, form.photoFile, { upsert: true })
+        if (uploadError) throw uploadError
+        photo_path = path
+      }
+
+      const payload = {
+        name: form.name.trim(),
+        title: form.title.trim(),
+        category: form.category,
+        bio: form.bio.trim() || null,
+        email: form.email.trim() || null,
+        phone: form.phone.trim() || null,
+        twitter: form.twitter.trim() || null,
+        photo_path,
+        published: form.published,
+        updated_at: new Date().toISOString(),
+      }
+
+      if (editing) {
+        const { error: updateError } = await supabase
+          .from('staff')
+          .update(payload)
+          .eq('id', editing.id)
+        if (updateError) throw updateError
+      } else {
+        const { error: insertError } = await supabase
+          .from('staff')
+          .insert({ ...payload, created_at: new Date().toISOString() })
+        if (insertError) throw insertError
+      }
+
+      onSaved()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save staff member.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inputStyle = {
+    background: 'hsl(220 30% 17%)',
+    border: '1px solid hsl(220 20% 25%)',
+  }
+  const inputClass =
+    'w-full px-3 py-2.5 rounded text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-primary'
+  const labelClass = 'block text-xs font-bold text-white/60 uppercase tracking-wider mb-1.5'
+
+  return (
+    <div
+      className="rounded-xl p-6 mb-6"
+      style={{ background: 'hsl(220 30% 12%)', border: '1px solid hsl(220 20% 20%)' }}
+    >
+      <h3 className="text-lg font-bold text-white mb-5">
+        {editing ? 'Edit staff member' : 'New staff member'}
+      </h3>
+
+      <form onSubmit={(e) => { void handleSubmit(e) }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Name */}
+          <div>
+            <label className={labelClass}>Name <span className="text-primary">*</span></label>
+            <input
+              type="text"
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className={inputClass}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Title */}
+          <div>
+            <label className={labelClass}>Title <span className="text-primary">*</span></label>
+            <input
+              type="text"
+              required
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="e.g. Head Coach"
+              className={inputClass}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label className={labelClass}>Category</label>
+            <div className="flex gap-2">
+              {STAFF_CATEGORIES.map((cat) => {
+                const active = form.category === cat
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, category: cat }))}
+                    className={cn(
+                      'px-4 py-2 rounded text-xs font-black uppercase tracking-wider transition-all',
+                      active ? 'text-black' : 'text-white/50 hover:text-white',
+                    )}
+                    style={{
+                      background: active ? 'hsl(26 91% 51%)' : 'hsl(220 30% 17%)',
+                      border: active ? '2px solid hsl(26 91% 51%)' : '1px solid hsl(220 20% 25%)',
+                    }}
+                  >
+                    {cat}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Published toggle */}
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.published}
+                onChange={(e) => setForm((f) => ({ ...f, published: e.target.checked }))}
+                className="w-4 h-4 accent-orange-500"
+              />
+              <span className="text-sm text-white/70 font-bold">Published (visible on site)</span>
+            </label>
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className={labelClass}>Email</label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              className={inputClass}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Twitter */}
+          <div>
+            <label className={labelClass}>Twitter / X Handle</label>
+            <input
+              type="text"
+              value={form.twitter}
+              onChange={(e) => setForm((f) => ({ ...f, twitter: e.target.value }))}
+              placeholder="@handle"
+              className={inputClass}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Bio */}
+          <div className="md:col-span-2">
+            <label className={labelClass}>Bio</label>
+            <textarea
+              value={form.bio}
+              onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
+              rows={4}
+              className={`${inputClass} resize-y`}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Photo */}
+          <div className="md:col-span-2">
+            <label className={labelClass}>Photo</label>
+            <div className="flex items-center gap-3">
+              {form.photoPreview && (
+                <img
+                  src={form.photoPreview}
+                  alt="preview"
+                  className="w-14 h-14 object-cover rounded"
+                />
+              )}
+              <div className="flex items-center gap-2 flex-wrap text-sm text-white/60">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="text-sm text-white/60 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-bold file:bg-white/10 file:text-white/70 hover:file:bg-white/20 cursor-pointer"
+                />
+                {form.photoPreview && (
+                  <button
+                    type="button"
+                    onClick={removePhoto}
+                    className="text-xs text-red-400 hover:text-red-300 font-bold"
+                  >
+                    Remove photo
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <p className="mt-4 text-red-400 text-xs font-medium bg-red-500/10 border border-red-500/20 rounded px-3 py-2">
+            {error}
+          </p>
+        )}
+
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-5 py-2 text-sm font-bold text-white/60 hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="px-6 py-2 rounded text-sm font-black uppercase tracking-wider text-white disabled:opacity-60 transition-opacity"
+            style={{ background: 'hsl(26 91% 51%)' }}
+          >
+            {saving ? 'Saving…' : editing ? 'Save changes' : 'Add staff'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function StaffTab() {
+  const [staffList, setStaffList] = useState<DbStaff[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editingStaff, setEditingStaff] = useState<DbStaff | null>(null)
+
+  async function fetchStaff() {
+    const { data } = await supabase
+      .from('staff')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+    setStaffList((data as DbStaff[]) ?? [])
+    setLoading(false)
+  }
+
+  useEffect(() => { void fetchStaff() }, [])
+
+  async function handleDelete(id: number) {
+    if (!confirm('Delete this staff member?')) return
+    await supabase.from('staff').delete().eq('id', id)
+    void fetchStaff()
+  }
+
+  async function togglePublished(member: DbStaff) {
+    await supabase
+      .from('staff')
+      .update({ published: !member.published, updated_at: new Date().toISOString() })
+      .eq('id', member.id)
+    void fetchStaff()
+  }
+
+  function openAdd() {
+    setEditingStaff(null)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function openEdit(member: DbStaff) {
+    setEditingStaff(member)
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function handleSaved() {
+    setShowForm(false)
+    setEditingStaff(null)
+    void fetchStaff()
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-white">Staff</h2>
+        {!showForm && (
+          <button
+            onClick={openAdd}
+            className="px-4 py-2 rounded text-sm font-black uppercase tracking-wider text-white"
+            style={{ background: 'hsl(26 91% 51%)' }}
+          >
+            + Add staff
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <StaffForm
+          editing={editingStaff}
+          onSaved={handleSaved}
+          onCancel={() => { setShowForm(false); setEditingStaff(null) }}
+        />
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : staffList.length === 0 ? (
+        <div
+          className="rounded-xl py-16 text-center"
+          style={{ border: '1px solid hsl(220 20% 20%)' }}
+        >
+          <p className="text-white/40 text-sm">
+            No staff yet. Click &quot;Add staff&quot; to get started.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {staffList.map((member) => {
+            const photoUrl = getPhotoUrl(member.photo_path)
+            return (
+              <div
+                key={member.id}
+                className="flex items-center justify-between px-4 py-3 rounded-lg"
+                style={{
+                  background: 'hsl(220 30% 12%)',
+                  border: '1px solid hsl(220 20% 20%)',
+                }}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-12 h-12 rounded overflow-hidden shrink-0 bg-white/5">
+                    {photoUrl ? (
+                      <img src={photoUrl} alt={member.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white/20 text-xs font-black">
+                        {member.name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white leading-tight">{member.name}</p>
+                    <p className="text-xs text-white/40 mt-0.5">
+                      {member.title}
+                      <span
+                        className={cn(
+                          'ml-2 text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5',
+                          member.category === 'coaching'
+                            ? 'bg-primary/20 text-primary'
+                            : 'bg-blue-500/20 text-blue-400',
+                        )}
+                      >
+                        {member.category}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => { void togglePublished(member) }}
+                    className={cn(
+                      'px-2 py-1 text-xs font-bold rounded transition-all',
+                      member.published ? 'text-green-400' : 'text-white/30 hover:text-white/60',
+                    )}
+                    style={{
+                      background: member.published ? 'hsl(140 60% 10%)' : 'hsl(220 30% 14%)',
+                      border: member.published
+                        ? '1px solid hsl(140 60% 30%)'
+                        : '1px solid hsl(220 20% 22%)',
+                    }}
+                    title={member.published ? 'Live — click to unpublish' : 'Draft — click to publish'}
+                  >
+                    {member.published ? 'Live' : 'Draft'}
+                  </button>
+                  <button
+                    onClick={() => openEdit(member)}
+                    className="px-3 py-1.5 text-xs font-bold text-white/70 hover:text-white rounded transition-colors"
+                    style={{ border: '1px solid hsl(220 20% 30%)' }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => { void handleDelete(member.id) }}
+                    className="px-3 py-1.5 text-xs font-bold text-red-400 hover:text-red-300 rounded transition-colors"
+                    style={{ border: '1px solid hsl(0 50% 30%)' }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -1824,7 +2304,7 @@ export default function AdminDashboard() {
         className="px-6 flex gap-6"
         style={{ borderBottom: '1px solid hsl(220 20% 18%)' }}
       >
-        {(['players', 'games', 'content'] as Tab[]).map((t) => (
+        {(['players', 'games', 'content', 'staff'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -1851,6 +2331,8 @@ export default function AdminDashboard() {
         {tab === 'games' && <GamesTab />}
 
         {tab === 'content' && <ContentTab />}
+
+        {tab === 'staff' && <StaffTab />}
       </main>
     </div>
   )

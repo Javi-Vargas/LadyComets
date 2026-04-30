@@ -229,3 +229,53 @@ values
     'Apr 17, 2026', '3 min read', false, false, true, 7
   )
 on conflict do nothing;
+
+-- ── Newsletter Subscribers ─────────────────────────────────
+
+create table if not exists newsletter_subscribers (
+  id            serial primary key,
+  email         text not null unique,
+  subscribed_at timestamptz default now()
+);
+
+alter table newsletter_subscribers enable row level security;
+
+-- Anyone (including anonymous visitors) can subscribe
+create policy "newsletter_public_insert"
+  on newsletter_subscribers for insert
+  with check (true);
+
+-- Only admins can read the subscriber list
+create policy "newsletter_admin_read"
+  on newsletter_subscribers for select
+  using (auth.jwt() ->> 'email' in (select email from allowed_admins));
+
+-- ── Coaching Staff ──────────────────────────────────────────
+
+create table if not exists staff (
+  id           serial primary key,
+  name         text not null,
+  title        text not null,
+  category     text not null default 'coaching' check (category in ('coaching', 'support')),
+  bio          text,
+  email        text,
+  phone        text,
+  twitter      text,
+  photo_path   text,                       -- Supabase Storage path (lady-comets bucket)
+  sort_order   integer default 0,
+  published    boolean default true,
+  created_at   timestamptz default now(),
+  updated_at   timestamptz default now()
+);
+
+alter table staff enable row level security;
+
+create policy "staff_public_read"
+  on staff for select
+  using (published = true);
+
+create policy "staff_admin_write"
+  on staff for all
+  using (
+    auth.jwt() ->> 'email' in (select email from allowed_admins)
+  );

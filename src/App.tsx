@@ -5,7 +5,9 @@ import Home from '@/pages/Home'
 import Roster from '@/pages/Roster'
 import Schedule from '@/pages/Schedule'
 import News from '@/pages/News'
+import NewsArticle from '@/pages/NewsArticle'
 import About from '@/pages/About'
+import Coaches from '@/pages/Coaches'
 import AdminLogin from '@/pages/admin/Login'
 import AdminDashboard from '@/pages/admin/Dashboard'
 
@@ -39,7 +41,9 @@ export default function App() {
             <Route path="/roster" component={Roster} />
             <Route path="/schedule" component={Schedule} />
             <Route path="/news" component={News} />
+            <Route path="/news/:id" component={NewsArticle} />
             <Route path="/about" component={About} />
+            <Route path="/coaches" component={Coaches} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

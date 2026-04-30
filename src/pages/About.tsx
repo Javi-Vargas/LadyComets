@@ -1,5 +1,6 @@
+import { Link } from 'wouter'
 import { motion } from 'framer-motion'
-import { Star, Heart, Trophy, Users } from 'lucide-react'
+import { Star, Heart, Trophy, Users, ArrowRight } from 'lucide-react'
 
 /* ── Org stats ── */
 const ORG_STATS = [
@@ -33,33 +34,6 @@ const VALUES = [
   },
 ]
 
-/* ── Staff ── */
-const STAFF = [
-  {
-    initials: 'HC',
-    role: 'Head Coach',
-    name: 'Coach Name',
-    bio: 'A decorated basketball mind with over a decade of coaching experience. Known for developing elite guards and instilling championship DNA into every program she leads.',
-  },
-  {
-    initials: 'AC',
-    role: 'Associate Head Coach',
-    name: 'Coach Name',
-    bio: 'Specializes in player development and defensive schemes. A former collegiate standout who brings intensity and technical precision to every practice.',
-  },
-  {
-    initials: 'DO',
-    role: 'Director of Operations',
-    name: 'Staff Name',
-    bio: 'Manages the day-to-day infrastructure of the program — travel, logistics, film, and everything in between — so the coaches can focus on the court.',
-  },
-  {
-    initials: 'SC',
-    role: 'Strength & Conditioning',
-    name: 'Staff Name',
-    bio: 'Designs individualized performance programs that build power, prevent injury, and keep every athlete at peak readiness across a full season.',
-  },
-]
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 24 },
@@ -182,38 +156,32 @@ export default function About() {
         </div>
       </section>
 
-      {/* ── COACHES & STAFF ── */}
+      {/* ── COACHES & STAFF CTA ── */}
       <section className="py-20 px-4">
         <div className="max-w-6xl mx-auto">
-          <motion.div {...fadeUp(0)} className="text-center mb-12">
-            <span className="text-xs font-black uppercase tracking-[0.4em] text-primary mb-3 inline-block">
-              The People Behind the Team
-            </span>
-            <h2 className="text-4xl font-black uppercase text-white">Coaches &amp; Staff</h2>
+          <motion.div
+            {...fadeUp(0)}
+            className="bg-card border border-white/10 hover:border-primary/30 transition-colors p-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6"
+          >
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary mb-2 inline-block">
+                The People Behind the Team
+              </span>
+              <h2 className="text-3xl font-black uppercase text-white">Coaches &amp; Staff</h2>
+              <p className="mt-2 text-sm text-white/50 max-w-md leading-relaxed">
+                Meet the coaching staff and support team that build championship culture every day.
+              </p>
+            </div>
+            <Link
+              href="/coaches"
+              className="shrink-0 inline-flex items-center gap-2 bg-primary text-black font-black uppercase text-sm px-6 py-3 hover:bg-white transition-colors duration-300 skew-x-[-8deg]"
+            >
+              <span className="skew-x-[8deg] flex items-center gap-2">
+                Meet the Staff
+                <ArrowRight className="w-4 h-4" />
+              </span>
+            </Link>
           </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {STAFF.map((s, i) => (
-              <motion.div
-                key={s.role}
-                {...fadeUp(i * 0.08)}
-                className="bg-card border border-white/10 p-6 flex items-start gap-4 hover:border-primary/30 transition-colors"
-              >
-                {/* Initials badge */}
-                <div className="w-12 h-12 shrink-0 flex items-center justify-center bg-primary/15 border border-primary/30">
-                  <span className="text-sm font-black text-primary">{s.initials}</span>
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5">
-                    {s.role}
-                  </p>
-                  <h3 className="text-lg font-black uppercase text-white mb-2">{s.name}</h3>
-                  <p className="text-xs text-white/50 leading-relaxed">{s.bio}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
     </div>

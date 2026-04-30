@@ -108,3 +108,27 @@ export type DbContentItem = {
 export function getContentImageUrl(item: Pick<DbContentItem, 'image_path' | 'image_url'>): string | null {
   return getPhotoUrl(item.image_path) ?? item.image_url ?? null
 }
+
+/** Shape returned by the `newsletter_subscribers` table in Supabase. */
+export type DbNewsletterSubscriber = {
+  id: number
+  email: string
+  subscribed_at: string
+}
+
+/** Shape returned by the `staff` table in Supabase. */
+export type DbStaff = {
+  id: number
+  name: string
+  title: string
+  category: 'coaching' | 'support'
+  bio: string | null
+  email: string | null
+  phone: string | null
+  twitter: string | null
+  photo_path: string | null  // Supabase Storage path inside the lady-comets bucket
+  sort_order: number
+  published: boolean
+  created_at: string
+  updated_at: string
+}

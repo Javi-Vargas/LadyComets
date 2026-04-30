@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, Clock, Check, Ticket, BarChart2, X } from 'lucide-react'
 import { allGames, ticketTiers } from '@/data/schedule'
+
+// Set to true once a ticketing provider is configured
+const SHOW_TICKETS = false
 import { supabase, getPhotoUrl, type DbGame } from '@/lib/supabase'
 import { useBoxScore } from '@/hooks/useBoxScore'
 import { cn } from '@/lib/utils'
@@ -326,14 +329,14 @@ export default function Schedule() {
                         <p className="text-sm font-black text-white mt-1">{game.score}</p>
                       )}
                     </div>
-                  ) : (
+                  ) : SHOW_TICKETS ? (
                     <button className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-primary text-black hover:bg-white transition-colors duration-300 skew-x-[-8deg]">
                       <span className="skew-x-[8deg] flex items-center gap-1.5">
                         <Ticket className="w-3 h-3" />
                         Tickets
                       </span>
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </motion.div>
@@ -341,53 +344,55 @@ export default function Schedule() {
         })}
       </div>
 
-      {/* Ticket tiers */}
-      <div className="mb-6">
-        <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-8">
-          Secure Your Seats
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {ticketTiers.map((tier) => (
-            <div
-              key={tier.tier}
-              className="relative overflow-hidden group cursor-pointer border border-white/10 hover:border-white/20 transition-colors"
-            >
+      {/* Ticket tiers — hidden until ticketing provider is configured (SHOW_TICKETS flag) */}
+      {SHOW_TICKETS && (
+        <div className="mb-6">
+          <p className="text-xs font-black uppercase tracking-widest text-white/30 mb-8">
+            Secure Your Seats
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {ticketTiers.map((tier) => (
               <div
-                className="absolute top-0 left-0 right-0 h-1"
-                style={{ backgroundColor: tier.accent }}
-              />
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xl font-black uppercase text-white">{tier.tier}</h3>
-                  <span
-                    className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5"
-                    style={{ backgroundColor: `${tier.accent}22`, color: tier.accent }}
+                key={tier.tier}
+                className="relative overflow-hidden group cursor-pointer border border-white/10 hover:border-white/20 transition-colors"
+              >
+                <div
+                  className="absolute top-0 left-0 right-0 h-1"
+                  style={{ backgroundColor: tier.accent }}
+                />
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xl font-black uppercase text-white">{tier.tier}</h3>
+                    <span
+                      className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5"
+                      style={{ backgroundColor: `${tier.accent}22`, color: tier.accent }}
+                    >
+                      {tier.tag}
+                    </span>
+                  </div>
+                  <p className="text-4xl font-black mb-5" style={{ color: tier.accent }}>
+                    {tier.price}
+                  </p>
+                  <ul className="space-y-2 mb-5">
+                    {tier.features.map((f) => (
+                      <li key={f} className="text-sm text-white/60 flex items-center gap-2">
+                        <Check className="w-3 h-3 shrink-0" style={{ color: tier.accent }} />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    className="w-full py-3 text-xs font-black uppercase tracking-widest transition-all duration-300 relative"
+                    style={{ backgroundColor: tier.accent, color: 'black' }}
                   >
-                    {tier.tag}
-                  </span>
+                    <span className="relative z-10">Get Tickets</span>
+                  </button>
                 </div>
-                <p className="text-4xl font-black mb-5" style={{ color: tier.accent }}>
-                  {tier.price}
-                </p>
-                <ul className="space-y-2 mb-5">
-                  {tier.features.map((f) => (
-                    <li key={f} className="text-sm text-white/60 flex items-center gap-2">
-                      <Check className="w-3 h-3 shrink-0" style={{ color: tier.accent }} />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  className="w-full py-3 text-xs font-black uppercase tracking-widest transition-all duration-300 relative"
-                  style={{ backgroundColor: tier.accent, color: 'black' }}
-                >
-                  <span className="relative z-10">Get Tickets</span>
-                </button>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Box Score Modal */}
       <AnimatePresence>

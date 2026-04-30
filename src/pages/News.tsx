@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'wouter'
 import { motion } from 'framer-motion'
 import { Clock, ArrowRight } from 'lucide-react'
 import { supabase, getContentImageUrl, type DbContentItem } from '@/lib/supabase'
@@ -81,6 +82,7 @@ export default function News() {
         <>
           {/* Featured article */}
           {featured && (
+            <Link href={`/news/${featured.id}`}>
             <motion.article
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -130,14 +132,15 @@ export default function News() {
                 </div>
               </div>
             </motion.article>
+            </Link>
           )}
 
           {/* Rest of articles */}
           {rest.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {rest.map((article, i) => (
+                <Link key={article.id} href={`/news/${article.id}`}>
                 <motion.article
-                  key={article.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 + i * 0.06 }}
@@ -189,6 +192,7 @@ export default function News() {
                     </div>
                   </div>
                 </motion.article>
+                </Link>
               ))}
             </div>
           )}
