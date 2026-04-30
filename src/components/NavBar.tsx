@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'wouter'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Calendar, Newspaper, Info, Ticket, GraduationCap } from 'lucide-react'
+import { Users, Calendar, Newspaper, Info, GraduationCap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
@@ -59,12 +59,12 @@ export default function NavBar() {
 
         <Link
           href="/schedule"
-          data-testid="nav-desktop-tickets"
+          data-testid="nav-desktop-schedule-cta"
           className="bg-primary text-black font-black uppercase text-sm px-5 py-2 hover:bg-white transition-colors duration-300 skew-x-[-10deg]"
         >
           <div className="skew-x-[10deg] flex items-center gap-2">
-            <Ticket className="w-4 h-4" />
-            Tickets
+            <Calendar className="w-4 h-4" />
+            Schedule
           </div>
         </Link>
       </nav>

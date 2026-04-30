@@ -133,7 +133,7 @@ export default function Footer() {
             © {new Date().getFullYear()} Orlando Lady Comets. All rights reserved.
           </p>
           <p className="text-[11px] text-white/20">
-            Privacy Policy · Terms of Use
+            Built with ❤️ in Orlando
           </p>
         </div>
       </div>

@@ -7,7 +7,7 @@ import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'players' | 'games' | 'content' | 'staff' | 'ticker'
+type Tab = 'players' | 'games' | 'content' | 'staff' | 'ticker' | 'subscribers'
 const POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C'] as const
 type Pos = typeof POSITIONS[number]
 
@@ -1999,6 +1999,19 @@ function StaffForm({ editing, onSaved, onCancel }: StaffFormProps) {
             />
           </div>
 
+          {/* Phone */}
+          <div>
+            <label className={labelClass}>Phone</label>
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              placeholder="e.g. (407) 555-0100"
+              className={inputClass}
+              style={inputStyle}
+            />
+          </div>
+
           {/* Twitter */}
           <div>
             <label className={labelClass}>Twitter / X Handle</label>
@@ -2497,6 +2510,79 @@ function TickerTab() {
   )
 }
 
+// ── Subscribers Tab ───────────────────────────────────────────────────────────
+
+interface DbSubscriber {
+  id: number
+  email: string
+  subscribed_at: string
+}
+
+function SubscribersTab() {
+  const [subscribers, setSubscribers] = useState<DbSubscriber[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase
+      .from('newsletter_subscribers')
+      .select('*')
+      .order('subscribed_at', { ascending: false })
+      .then(({ data }) => {
+        setSubscribers((data ?? []) as DbSubscriber[])
+        setLoading(false)
+      })
+  }, [])
+
+  function formatDate(iso: string) {
+    return new Date(iso).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Newsletter Subscribers</h2>
+          {!loading && (
+            <p className="text-xs text-white/40 mt-1">
+              {subscribers.length} subscriber{subscribers.length !== 1 ? 's' : ''} total
+            </p>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : subscribers.length === 0 ? (
+        <div
+          className="rounded-xl py-16 text-center"
+          style={{ border: '1px solid hsl(220 20% 20%)' }}
+        >
+          <p className="text-white/40 text-sm">No subscribers yet.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {subscribers.map((sub) => (
+            <div
+              key={sub.id}
+              className="flex items-center justify-between px-4 py-3 rounded-lg"
+              style={{ background: 'hsl(220 30% 12%)', border: '1px solid hsl(220 20% 20%)' }}
+            >
+              <span className="text-sm text-white font-medium">{sub.email}</span>
+              <span className="text-xs text-white/30">{formatDate(sub.subscribed_at)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -2548,7 +2634,7 @@ export default function AdminDashboard() {
         className="px-6 flex gap-6"
         style={{ borderBottom: '1px solid hsl(220 20% 18%)' }}
       >
-        {(['players', 'games', 'content', 'staff', 'ticker'] as Tab[]).map((t) => (
+        {(['players', 'games', 'content', 'staff', 'ticker', 'subscribers'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -2579,6 +2665,8 @@ export default function AdminDashboard() {
         {tab === 'staff' && <StaffTab />}
 
         {tab === 'ticker' && <TickerTab />}
+
+        {tab === 'subscribers' && <SubscribersTab />}
       </main>
     </div>
   )

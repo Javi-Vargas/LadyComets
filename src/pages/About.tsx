@@ -6,7 +6,7 @@ import { Star, Heart, Trophy, Users, ArrowRight } from 'lucide-react'
 const ORG_STATS = [
   { value: '2026', label: 'Season' },
   { value: 'Orlando', label: 'Home City' },
-  { value: '9', label: 'Games This Season' },
+  { value: 'Inaugural', label: '2026 Season' },
   { value: '100%', label: 'Heart & Hustle' },
 ]
 

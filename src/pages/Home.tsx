@@ -145,8 +145,8 @@ function BentoCard({ card, cometsWins, cometsLosses }: { card: BentoCardData; co
     )
   }
 
-  return (
-    <div className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group`}>
+  const inner = (
+    <>
       {card.image && (
         <div className="absolute inset-0 z-0">
           <img
@@ -179,7 +179,21 @@ function BentoCard({ card, cometsWins, cometsLosses }: { card: BentoCardData; co
           </a>
         )}
       </div>
-    </div>
+    </>
+  )
+
+  if (card.instagram_url) {
+    return (
+      <div className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group`}>
+        {inner}
+      </div>
+    )
+  }
+
+  return (
+    <Link href={`/news/${card.id}`} className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group block`}>
+      {inner}
+    </Link>
   )
 }
 

@@ -336,7 +336,11 @@ export default function Schedule() {
                         Tickets
                       </span>
                     </button>
-                  ) : null}
+                  ) : (
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/20 px-2 py-0.5 border border-white/10">
+                      Upcoming
+                    </span>
+                  )}
                 </div>
               </div>
             </motion.div>
