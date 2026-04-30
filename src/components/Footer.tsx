@@ -111,7 +111,7 @@ export default function Footer() {
               <button
                 type="submit"
                 disabled={status === 'loading'}
-                className="bg-primary text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed skew-x-[-8deg]"
+                className="bg-primary text-black font-black uppercase text-xs px-4 py-2 hover:bg-white transition-colors duration-300 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed skew-x-[-8deg]"
               >
                 <span className="skew-x-[8deg] inline-block">
                   {status === 'loading' ? '...' : 'Join'}

@@ -111,7 +111,7 @@ function BioModal({ member, onClose }: { member: Staff; onClose: () => void }) {
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 text-white/50 hover:text-white transition-colors"
+          className="absolute top-4 right-4 z-20 text-white/50 hover:text-white transition-colors cursor-pointer"
           aria-label="Close"
         >
           <X className="w-5 h-5" />

@@ -100,7 +100,7 @@ function BoxScoreModal({ game, onClose }: BoxScoreModalProps) {
           </div>
           <button
             onClick={onClose}
-            className="text-white/40 hover:text-white transition-colors shrink-0 mt-1"
+            className="text-white/40 hover:text-white transition-colors shrink-0 mt-1 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -301,7 +301,7 @@ export default function Schedule() {
                         </div>
                         <button
                           onClick={() => setSelectedGame(game)}
-                          className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-white/10 text-white hover:bg-white/20 transition-colors duration-300 skew-x-[-8deg]"
+                          className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-white/10 text-white hover:bg-white/20 transition-colors duration-300 skew-x-[-8deg] cursor-pointer"
                         >
                           <span className="skew-x-[8deg] flex items-center gap-1.5">
                             <BarChart2 className="w-3 h-3" />
@@ -310,7 +310,7 @@ export default function Schedule() {
                         </button>
                       </>
                     ) : SHOW_TICKETS ? (
-                      <button className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-primary text-black hover:bg-white transition-colors duration-300 skew-x-[-8deg]">
+                      <button className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-primary text-black hover:bg-white transition-colors duration-300 skew-x-[-8deg] cursor-pointer">
                         <span className="skew-x-[8deg] flex items-center gap-1.5">
                           <Ticket className="w-3 h-3" />
                           Tickets
@@ -367,7 +367,7 @@ export default function Schedule() {
                     ))}
                   </ul>
                   <button
-                    className="w-full py-3 text-xs font-black uppercase tracking-widest transition-all duration-300 relative"
+                    className="w-full py-3 text-xs font-black uppercase tracking-widest transition-all duration-300 relative cursor-pointer"
                     style={{ backgroundColor: tier.accent, color: 'black' }}
                   >
                     <span className="relative z-10">Get Tickets</span>

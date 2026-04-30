@@ -143,7 +143,7 @@ function PlayerModal({ player, onClose }: { player: Player; onClose: () => void 
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-20 text-white/50 hover:text-white transition-colors"
+          className="absolute top-4 right-4 z-20 text-white/50 hover:text-white transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -346,7 +346,7 @@ export default function Roster() {
               key={pos}
               onClick={() => setFilter(pos)}
               className={cn(
-                'px-4 py-2 text-xs font-black uppercase tracking-widest transition-all duration-300',
+                'px-4 py-2 text-xs font-black uppercase tracking-widest transition-all duration-300 cursor-pointer',
                 filter === pos
                   ? 'bg-primary text-black'
                   : 'glass-panel text-white/60 hover:text-white',
