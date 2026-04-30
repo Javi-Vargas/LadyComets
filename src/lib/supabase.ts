@@ -22,10 +22,13 @@ export type DbPlayer = {
 /** Shape returned by the `games` table in Supabase. */
 export type DbGame = {
   id: number
-  schedule_id: number | null  // maps to static allGames[].id in schedule.ts
+  schedule_id: number | null
   date: string                // ISO date: "2026-06-14"
+  display_date: string | null // Human-readable: "Jun 6–7, 2026"
   opponent: string
   home_away: 'HOME' | 'AWAY' | 'TOURNAMENT'
+  time: string | null         // "TBD" | "7:00 PM ET" | "Completed"
+  note: string | null         // e.g. "Season Opener", "Championship Night"
   team_score: number | null
   opponent_score: number | null
   result: 'W' | 'L' | null

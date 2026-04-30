@@ -3,15 +3,13 @@ import { Link } from 'wouter'
 import { motion } from 'framer-motion'
 import { ChevronRight } from 'lucide-react'
 import CountdownTimer from '@/components/CountdownTimer'
-import { getNextGame } from '@/data/schedule'
-import { supabase, getContentImageUrl, type DbContentItem, type DbGame } from '@/lib/supabase'
+import { useSchedule } from '@/hooks/useSchedule'
+import { supabase, getContentImageUrl, type DbContentItem } from '@/lib/supabase'
 
 // Set to true once a ticketing provider is configured
 const SHOW_TICKETS = false
 // Set to true once the team is in a league with trackable opponent records
 const SHOW_STANDINGS = false
-
-const nextGame = getNextGame()
 
 /* ── Standings — opponent rows are static; Lady Comets row is derived live ── */
 const OPPONENT_STANDINGS = [
@@ -36,18 +34,22 @@ interface BentoCardData {
   isStandings?: boolean
 }
 
-/* Utility cards injected after CMS feed cards */
-const TICKET_CARD: BentoCardData = {
-  id: 'tickets-cta',
-  colSpan: 'md:col-span-1',
-  rowSpan: 'md:row-span-1',
-  category: 'LIVE',
-  title: nextGame ? `${nextGame.displayDate.toUpperCase()} VS ${nextGame.opponent.toUpperCase()}` : 'UPCOMING',
-  excerpt: "Home court. Playoff energy. Get your seats before they're gone.",
-  image: null,
-  accent: 'hsl(var(--accent))',
-  large: false,
-  isTicket: true,
+/* Built inside the component so it can reference the live DB next game */
+function makeTicketCard(nextGame: { display_date?: string | null; opponent?: string } | null): BentoCardData {
+  return {
+    id: 'tickets-cta',
+    colSpan: 'md:col-span-1',
+    rowSpan: 'md:row-span-1',
+    category: 'LIVE',
+    title: nextGame
+      ? `${(nextGame.display_date ?? '').toUpperCase()} VS ${nextGame.opponent?.toUpperCase() ?? ''}`
+      : 'UPCOMING',
+    excerpt: "Home court. Playoff energy. Get your seats before they're gone.",
+    image: null,
+    accent: 'hsl(var(--accent))',
+    large: false,
+    isTicket: true,
+  }
 }
 
 const STANDINGS_CARD: BentoCardData = {
@@ -199,6 +201,7 @@ function BentoCard({ card, cometsWins, cometsLosses }: { card: BentoCardData; co
 }
 
 export default function Home() {
+  const { nextGame } = useSchedule()
   const [feedItems, setFeedItems] = useState<BentoCardData[]>([])
   const [feedLoading, setFeedLoading] = useState(true)
   const [cometsWins, setCometsWins] = useState(0)
@@ -222,9 +225,9 @@ export default function Home() {
         .from('games')
         .select('result')
         .not('result', 'is', null)
-      const games = (data ?? []) as Pick<DbGame, 'result'>[]
-      setCometsWins(games.filter((g) => g.result === 'W').length)
-      setCometsLosses(games.filter((g) => g.result === 'L').length)
+      const rows = (data ?? []) as { result: string | null }[]
+      setCometsWins(rows.filter((g) => g.result === 'W').length)
+      setCometsLosses(rows.filter((g) => g.result === 'L').length)
     }
 
     void loadFeed()
@@ -233,7 +236,7 @@ export default function Home() {
 
   /* Merge DB content cards with utility cards; hide ticket CTA until ticketing is ready */
   const utilityCards = [
-    ...(SHOW_TICKETS ? [TICKET_CARD] : []),
+    ...(SHOW_TICKETS ? [makeTicketCard(nextGame)] : []),
     ...(SHOW_STANDINGS ? [STANDINGS_CARD] : []),
   ]
   const allBentoItems = [...feedItems, ...utilityCards]
@@ -301,10 +304,10 @@ export default function Home() {
             <div className="inline-block glass-panel px-6 py-5 md:px-10 md:py-7">
               <p className="text-[10px] font-black uppercase tracking-[0.4em] text-primary mb-4 text-center">
                 {nextGame
-                  ? `Next Game — ${nextGame.displayDate} vs ${nextGame.opponent}`
+                  ? `Next Game — ${nextGame.display_date ?? nextGame.date} vs ${nextGame.opponent}`
                   : 'Season Schedule'}
               </p>
-              <CountdownTimer />
+              <CountdownTimer nextGame={nextGame} />
             </div>
           </motion.div>
 

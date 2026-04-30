@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, Clock, Check, Ticket, BarChart2, X } from 'lucide-react'
-import { allGames, ticketTiers } from '@/data/schedule'
+import { ticketTiers } from '@/data/schedule'
+import { useSchedule, type ScheduleGame } from '@/hooks/useSchedule'
+import { getPhotoUrl, type DbGame } from '@/lib/supabase'
+import { useBoxScore } from '@/hooks/useBoxScore'
+import { cn } from '@/lib/utils'
 
 // Set to true once a ticketing provider is configured
 const SHOW_TICKETS = false
-import { supabase, getPhotoUrl, type DbGame } from '@/lib/supabase'
-import { useBoxScore } from '@/hooks/useBoxScore'
-import { cn } from '@/lib/utils'
 
 // ── Box Score Modal ───────────────────────────────────────────────────────────
 
@@ -191,22 +192,8 @@ function BoxScoreModal({ game, onClose }: BoxScoreModalProps) {
 // ── Schedule Page ─────────────────────────────────────────────────────────────
 
 export default function Schedule() {
-  // Index DB games by schedule_id for O(1) lookup
-  const [dbGames, setDbGames] = useState<Map<number, DbGame>>(new Map())
+  const { games, loading } = useSchedule()
   const [selectedGame, setSelectedGame] = useState<DbGame | null>(null)
-
-  useEffect(() => {
-    supabase
-      .from('games')
-      .select('*')
-      .then(({ data }) => {
-        const map = new Map<number, DbGame>()
-        for (const g of (data ?? []) as DbGame[]) {
-          if (g.schedule_id != null) map.set(g.schedule_id, g)
-        }
-        setDbGames(map)
-      })
-  }, [])
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-12" data-testid="schedule-page">
@@ -217,136 +204,130 @@ export default function Schedule() {
       </div>
 
       {/* Games list */}
-      <div className="space-y-3 mb-16">
-        {allGames.map((game, i) => {
-          const dbGame = dbGames.get(game.id)
-          const hasResult = dbGame?.result != null
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="space-y-3 mb-16">
+          {games.map((game: ScheduleGame, i: number) => {
+            const displayDate = game.display_date ?? game.date
+            const hasResult = game.result != null
 
-          return (
-            <motion.div
-              key={game.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className={cn(
-                'relative overflow-hidden group',
-                game.isNext
-                  ? 'border border-primary/50 bg-primary/5 transition-all duration-300 hover:bg-primary/[0.08]'
-                  : game.past
-                  ? 'border border-white/5 opacity-60 transition-all duration-200 hover:opacity-75'
-                  : 'border border-white/10 hover:border-white/20 hover:bg-white/[0.03] transition-all duration-300',
-              )}
-            >
-              {game.isNext && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-primary animate-pulse" />
-              )}
+            return (
+              <motion.div
+                key={game.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className={cn(
+                  'relative overflow-hidden group',
+                  game.isNext
+                    ? 'border border-primary/50 bg-primary/5 transition-all duration-300 hover:bg-primary/[0.08]'
+                    : game.past
+                    ? 'border border-white/5 opacity-60 transition-all duration-200 hover:opacity-75'
+                    : 'border border-white/10 hover:border-white/20 hover:bg-white/[0.03] transition-all duration-300',
+                )}
+              >
+                {game.isNext && (
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-primary animate-pulse" />
+                )}
 
-              <div className="flex items-center justify-between p-4 flex-wrap gap-3">
-                {/* Date & opponent */}
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="text-center min-w-[70px]">
-                    <p className="text-xs font-black text-white/40 uppercase">
-                      {game.displayDate.split(' ')[0]}
-                    </p>
-                    <p className="text-2xl font-black text-white leading-tight">
-                      {game.displayDate.split(' ')[1]?.replace(',', '')}
-                    </p>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          'text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5',
-                          game.homeAway === 'HOME'
-                            ? 'bg-primary/20 text-primary'
-                            : game.homeAway === 'TOURNAMENT'
-                            ? 'bg-accent/20 text-accent'
-                            : 'bg-white/10 text-white/50',
-                        )}
-                      >
-                        {game.homeAway}
-                      </span>
-                      <h3 className="text-lg font-black uppercase text-white">{game.opponent}</h3>
+                <div className="flex items-center justify-between p-4 flex-wrap gap-3">
+                  {/* Date & opponent */}
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="text-center min-w-[70px]">
+                      <p className="text-xs font-black text-white/40 uppercase">
+                        {displayDate.split(' ')[0]}
+                      </p>
+                      <p className="text-2xl font-black text-white leading-tight">
+                        {displayDate.split(' ')[1]?.replace(',', '')}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-white/40">
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3 h-3" />
-                        {game.venue}
-                      </span>
-                      {!game.past && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {game.time}
-                        </span>
-                      )}
-                      {game.note && (
-                        <span className="text-primary font-bold">{game.note}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Result / Box Score / Tickets */}
-                <div className="flex items-center gap-3">
-                  {hasResult && dbGame ? (
-                    <>
-                      <div className="text-right">
+                    <div>
+                      <div className="flex items-center gap-2">
                         <span
                           className={cn(
-                            'text-xs font-black uppercase tracking-widest px-2 py-0.5',
-                            dbGame.result === 'W' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400',
+                            'text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5',
+                            game.home_away === 'HOME'
+                              ? 'bg-primary/20 text-primary'
+                              : game.home_away === 'TOURNAMENT'
+                              ? 'bg-accent/20 text-accent'
+                              : 'bg-white/10 text-white/50',
                           )}
                         >
-                          {dbGame.result}
+                          {game.home_away}
                         </span>
-                        {dbGame.team_score != null && dbGame.opponent_score != null && (
-                          <p className="text-sm font-black text-white mt-1">
-                            {dbGame.team_score}–{dbGame.opponent_score}
-                          </p>
+                        <h3 className="text-lg font-black uppercase text-white">{game.opponent}</h3>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-white/40">
+                        {game.venue && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {game.venue}
+                          </span>
+                        )}
+                        {!game.past && game.time && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {game.time}
+                          </span>
+                        )}
+                        {game.note && (
+                          <span className="text-primary font-bold">{game.note}</span>
                         )}
                       </div>
-                      <button
-                        onClick={() => setSelectedGame(dbGame)}
-                        className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-white/10 text-white hover:bg-white/20 transition-colors duration-300 skew-x-[-8deg]"
-                      >
+                    </div>
+                  </div>
+
+                  {/* Result / Box Score / Tickets */}
+                  <div className="flex items-center gap-3">
+                    {hasResult ? (
+                      <>
+                        <div className="text-right">
+                          <span
+                            className={cn(
+                              'text-xs font-black uppercase tracking-widest px-2 py-0.5',
+                              game.result === 'W' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400',
+                            )}
+                          >
+                            {game.result}
+                          </span>
+                          {game.team_score != null && game.opponent_score != null && (
+                            <p className="text-sm font-black text-white mt-1">
+                              {game.team_score}–{game.opponent_score}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setSelectedGame(game)}
+                          className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-white/10 text-white hover:bg-white/20 transition-colors duration-300 skew-x-[-8deg]"
+                        >
+                          <span className="skew-x-[8deg] flex items-center gap-1.5">
+                            <BarChart2 className="w-3 h-3" />
+                            Box Score
+                          </span>
+                        </button>
+                      </>
+                    ) : SHOW_TICKETS ? (
+                      <button className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-primary text-black hover:bg-white transition-colors duration-300 skew-x-[-8deg]">
                         <span className="skew-x-[8deg] flex items-center gap-1.5">
-                          <BarChart2 className="w-3 h-3" />
-                          Box Score
+                          <Ticket className="w-3 h-3" />
+                          Tickets
                         </span>
                       </button>
-                    </>
-                  ) : game.past ? (
-                    <div className="text-right">
-                      <span
-                        className={cn(
-                          'text-xs font-black uppercase tracking-widest px-2 py-0.5',
-                          game.result === 'W' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400',
-                        )}
-                      >
-                        {game.result}
+                    ) : (
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/20 px-2 py-0.5 border border-white/10">
+                        Upcoming
                       </span>
-                      {game.score && (
-                        <p className="text-sm font-black text-white mt-1">{game.score}</p>
-                      )}
-                    </div>
-                  ) : SHOW_TICKETS ? (
-                    <button className="px-4 py-2 text-xs font-black uppercase tracking-widest bg-primary text-black hover:bg-white transition-colors duration-300 skew-x-[-8deg]">
-                      <span className="skew-x-[8deg] flex items-center gap-1.5">
-                        <Ticket className="w-3 h-3" />
-                        Tickets
-                      </span>
-                    </button>
-                  ) : (
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/20 px-2 py-0.5 border border-white/10">
-                      Upcoming
-                    </span>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
+              </motion.div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Ticket tiers — hidden until ticketing provider is configured (SHOW_TICKETS flag) */}
       {SHOW_TICKETS && (

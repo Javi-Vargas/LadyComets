@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'wouter'
 import { supabase, getPhotoUrl, getContentImageUrl, type DbPlayer, type DbGame, type DbPlayerGameStats, type DbContentItem, type DbStaff, type DbTickerItem } from '@/lib/supabase'
-import { allGames } from '@/data/schedule'
 import { cn } from '@/lib/utils'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 
@@ -469,22 +468,26 @@ const RESULT_OPTIONS = [
 ] as const
 
 interface GameFormState {
-  schedule_id: string
   date: string
+  display_date: string
   opponent: string
   home_away: string
   venue: string
+  time: string
+  note: string
   team_score: string
   opponent_score: string
   result: string
 }
 
 const EMPTY_GAME_FORM: GameFormState = {
-  schedule_id: '',
   date: '',
+  display_date: '',
   opponent: '',
   home_away: 'HOME',
   venue: '',
+  time: '',
+  note: '',
   team_score: '',
   opponent_score: '',
   result: '',
@@ -750,11 +753,13 @@ function GamesTab() {
   function openEdit(game: DbGame) {
     setEditingGame(game)
     setForm({
-      schedule_id: game.schedule_id != null ? String(game.schedule_id) : '',
       date: game.date,
+      display_date: game.display_date ?? '',
       opponent: game.opponent,
       home_away: game.home_away,
       venue: game.venue ?? '',
+      time: game.time ?? '',
+      note: game.note ?? '',
       team_score: game.team_score != null ? String(game.team_score) : '',
       opponent_score: game.opponent_score != null ? String(game.opponent_score) : '',
       result: game.result ?? '',
@@ -772,11 +777,13 @@ function GamesTab() {
     setError(null)
 
     const payload = {
-      schedule_id: form.schedule_id ? parseInt(form.schedule_id, 10) : null,
       date: form.date,
+      display_date: form.display_date.trim() || null,
       opponent: form.opponent.trim(),
       home_away: form.home_away,
       venue: form.venue.trim() || null,
+      time: form.time.trim() || null,
+      note: form.note.trim() || null,
       team_score: form.team_score ? parseInt(form.team_score, 10) : null,
       opponent_score: form.opponent_score ? parseInt(form.opponent_score, 10) : null,
       result: form.result || null,
@@ -837,35 +844,6 @@ function GamesTab() {
           </h3>
           <form onSubmit={(e) => { void handleSubmit(e) }}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Schedule link */}
-              <div>
-                <label className={labelCls}>Link to Schedule Entry</label>
-                <select
-                  value={form.schedule_id}
-                  onChange={(e) => {
-                    const sid = e.target.value
-                    const matched = allGames.find((g) => String(g.id) === sid)
-                    setForm((f) => ({
-                      ...f,
-                      schedule_id: sid,
-                      opponent: matched ? matched.opponent : f.opponent,
-                      date: matched ? matched.date : f.date,
-                      home_away: matched ? matched.homeAway : f.home_away,
-                      venue: matched ? matched.venue : f.venue,
-                    }))
-                  }}
-                  className={inputCls}
-                  style={inputStyle}
-                >
-                  <option value="">— None (custom game)</option>
-                  {allGames.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.displayDate} · {g.opponent}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
               {/* Date */}
               <div>
                 <label className={labelCls}>Date <span className="text-primary">*</span></label>
@@ -876,6 +854,19 @@ function GamesTab() {
                   className={inputCls}
                   style={inputStyle}
                   required
+                />
+              </div>
+
+              {/* Display Date */}
+              <div>
+                <label className={labelCls}>Display Date</label>
+                <input
+                  type="text"
+                  value={form.display_date}
+                  onChange={(e) => setForm((f) => ({ ...f, display_date: e.target.value }))}
+                  placeholder="e.g. Jun 6–7, 2026"
+                  className={inputCls}
+                  style={inputStyle}
                 />
               </div>
 
@@ -914,6 +905,32 @@ function GamesTab() {
                   type="text"
                   value={form.venue}
                   onChange={(e) => setForm((f) => ({ ...f, venue: e.target.value }))}
+                  className={inputCls}
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Time */}
+              <div>
+                <label className={labelCls}>Game Time</label>
+                <input
+                  type="text"
+                  value={form.time}
+                  onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
+                  placeholder="e.g. 7:00 PM ET or TBD"
+                  className={inputCls}
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Note */}
+              <div>
+                <label className={labelCls}>Note / Label</label>
+                <input
+                  type="text"
+                  value={form.note}
+                  onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
+                  placeholder="e.g. Season Opener, Championship Night"
                   className={inputCls}
                   style={inputStyle}
                 />

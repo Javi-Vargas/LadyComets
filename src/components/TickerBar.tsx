@@ -1,18 +1,29 @@
 import { useState, useEffect } from 'react'
 import { supabase, type DbGame, type DbTickerItem } from '@/lib/supabase'
-import { getNextGame } from '@/data/schedule'
 
-const STATIC_ITEMS = [
-  'ORLANDO LADY COMETS — 2026 SEASON',
-  "ORLANDO'S RISING STARS",
-  'AMWAY CENTER — ORLANDO, FL',
-]
+// Minimal emergency fallback shown only when DB is unreachable
+const STATIC_ITEMS = ['ORLANDO LADY COMETS']
 
 export default function TickerBar() {
+  const [nextGame, setNextGame] = useState<DbGame | null>(null)
   const [lastGame, setLastGame] = useState<DbGame | null>(null)
   const [customItems, setCustomItems] = useState<string[]>([])
 
   useEffect(() => {
+    const today = new Date().toISOString().split('T')[0]
+
+    // Next upcoming game
+    supabase
+      .from('games')
+      .select('*')
+      .is('result', null)
+      .gte('date', today)
+      .order('date', { ascending: true })
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) setNextGame(data[0] as DbGame)
+      })
+
     // Last played game result
     supabase
       .from('games')
@@ -36,14 +47,11 @@ export default function TickerBar() {
       })
   }, [])
 
-  const nextGame = getNextGame()
-
   const autoItems: string[] = []
 
   if (nextGame) {
-    autoItems.push(
-      `NEXT GAME: LADY COMETS VS. ${nextGame.opponent.toUpperCase()} — ${nextGame.displayDate.toUpperCase()}`,
-    )
+    const displayDate = (nextGame.display_date ?? nextGame.date).toUpperCase()
+    autoItems.push(`NEXT GAME: LADY COMETS VS. ${nextGame.opponent.toUpperCase()} — ${displayDate}`)
   }
 
   if (lastGame) {
@@ -52,13 +60,13 @@ export default function TickerBar() {
         ? ` ${lastGame.team_score}–${lastGame.opponent_score}`
         : ''
     const resultWord = lastGame.result === 'W' ? 'WIN' : 'LOSS'
-    autoItems.push(
-      `FINAL: LADY COMETS${score} — ${resultWord} VS. ${lastGame.opponent.toUpperCase()}`,
-    )
+    autoItems.push(`FINAL: LADY COMETS${score} — ${resultWord} VS. ${lastGame.opponent.toUpperCase()}`)
   }
 
-  // Custom items lead, then auto-generated game items, then static fallbacks
-  const items = [...customItems, ...autoItems, ...STATIC_ITEMS]
+  // Custom DB items lead, then auto-generated game items, then static emergency fallback
+  const items = customItems.length > 0 || autoItems.length > 0
+    ? [...customItems, ...autoItems]
+    : STATIC_ITEMS
   const display = [...items, ...items, ...items]
 
   return (
