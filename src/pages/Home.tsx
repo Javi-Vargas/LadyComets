@@ -8,6 +8,8 @@ import { supabase, getContentImageUrl, type DbContentItem, type DbGame } from '@
 
 // Set to true once a ticketing provider is configured
 const SHOW_TICKETS = false
+// Set to true once the team is in a league with trackable opponent records
+const SHOW_STANDINGS = false
 
 const nextGame = getNextGame()
 
@@ -231,9 +233,10 @@ export default function Home() {
   }, [])
 
   /* Merge DB content cards with utility cards; hide ticket CTA until ticketing is ready */
-  const utilityCards = SHOW_TICKETS
-    ? [TICKET_CARD, STANDINGS_CARD]
-    : [STANDINGS_CARD]
+  const utilityCards = [
+    ...(SHOW_TICKETS ? [TICKET_CARD] : []),
+    ...(SHOW_STANDINGS ? [STANDINGS_CARD] : []),
+  ]
   const allBentoItems = [...feedItems, ...utilityCards]
 
   return (
