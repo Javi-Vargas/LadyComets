@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'wouter'
-import { supabase, getPhotoUrl, getContentImageUrl, type DbPlayer, type DbGame, type DbPlayerGameStats, type DbContentItem, type DbStaff } from '@/lib/supabase'
+import { supabase, getPhotoUrl, getContentImageUrl, type DbPlayer, type DbGame, type DbPlayerGameStats, type DbContentItem, type DbStaff, type DbTickerItem } from '@/lib/supabase'
 import { allGames } from '@/data/schedule'
 import { cn } from '@/lib/utils'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'players' | 'games' | 'content' | 'staff'
+type Tab = 'players' | 'games' | 'content' | 'staff' | 'ticker'
 const POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C'] as const
 type Pos = typeof POSITIONS[number]
 
@@ -2253,6 +2253,250 @@ function StaffTab() {
   )
 }
 
+// ── Ticker Tab ────────────────────────────────────────────────────────────────
+
+function TickerTab() {
+  const [items, setItems] = useState<DbTickerItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [newMsg, setNewMsg] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [addError, setAddError] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editMsg, setEditMsg] = useState('')
+  const [savingId, setSavingId] = useState<number | null>(null)
+
+  async function fetchItems() {
+    const { data } = await supabase
+      .from('ticker_items')
+      .select('*')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+    setItems((data as DbTickerItem[]) ?? [])
+    setLoading(false)
+  }
+
+  useEffect(() => { void fetchItems() }, [])
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault()
+    const msg = newMsg.trim()
+    if (!msg) return
+    setAdding(true)
+    setAddError(null)
+    const { error } = await supabase
+      .from('ticker_items')
+      .insert({ message: msg, active: true, sort_order: items.length })
+    if (error) {
+      setAddError(error.message)
+    } else {
+      setNewMsg('')
+      void fetchItems()
+    }
+    setAdding(false)
+  }
+
+  async function toggleActive(item: DbTickerItem) {
+    await supabase
+      .from('ticker_items')
+      .update({ active: !item.active, updated_at: new Date().toISOString() })
+      .eq('id', item.id)
+    void fetchItems()
+  }
+
+  function startEdit(item: DbTickerItem) {
+    setEditingId(item.id)
+    setEditMsg(item.message)
+  }
+
+  async function saveEdit(item: DbTickerItem) {
+    const msg = editMsg.trim()
+    if (!msg) return
+    setSavingId(item.id)
+    await supabase
+      .from('ticker_items')
+      .update({ message: msg, updated_at: new Date().toISOString() })
+      .eq('id', item.id)
+    setEditingId(null)
+    setEditMsg('')
+    setSavingId(null)
+    void fetchItems()
+  }
+
+  async function handleDelete(id: number) {
+    if (!confirm('Remove this banner message?')) return
+    await supabase.from('ticker_items').delete().eq('id', id)
+    void fetchItems()
+  }
+
+  const inputStyle = { background: 'hsl(220 30% 17%)', border: '1px solid hsl(220 20% 25%)' }
+  const inputClass = 'flex-1 px-3 py-2 rounded text-sm text-white placeholder-white/30 outline-none focus:ring-2 focus:ring-primary'
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-white mb-1">Banner Ticker</h2>
+        <p className="text-xs text-white/40">
+          Custom messages appear first in the scrolling banner, ahead of the auto-generated next-game and result items.
+          Toggle a message off to hide it without deleting it.
+        </p>
+      </div>
+
+      {/* Add new message */}
+      <form
+        onSubmit={(e) => { void handleAdd(e) }}
+        className="flex gap-2 mb-8"
+      >
+        <input
+          type="text"
+          required
+          value={newMsg}
+          onChange={(e) => setNewMsg(e.target.value)}
+          placeholder="e.g. CHAMPIONSHIP GAME TICKETS ON SALE NOW"
+          className={inputClass}
+          style={inputStyle}
+          maxLength={120}
+        />
+        <button
+          type="submit"
+          disabled={adding}
+          className="px-5 py-2 rounded text-sm font-black uppercase tracking-wider text-white disabled:opacity-60 shrink-0"
+          style={{ background: 'hsl(26 91% 51%)' }}
+        >
+          {adding ? '...' : '+ Add'}
+        </button>
+      </form>
+      {addError && (
+        <p className="text-xs text-red-400 -mt-6 mb-4">{addError}</p>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : items.length === 0 ? (
+        <div
+          className="rounded-xl py-16 text-center"
+          style={{ border: '1px solid hsl(220 20% 20%)' }}
+        >
+          <p className="text-white/40 text-sm">
+            No custom messages yet. Add one above to have it appear in the banner.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 rounded-lg transition-opacity',
+                !item.active && 'opacity-50',
+              )}
+              style={{
+                background: 'hsl(220 30% 12%)',
+                border: '1px solid hsl(220 20% 20%)',
+              }}
+            >
+              {/* Message (editable inline) */}
+              <div className="flex-1 min-w-0">
+                {editingId === item.id ? (
+                  <input
+                    type="text"
+                    value={editMsg}
+                    autoFocus
+                    onChange={(e) => setEditMsg(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void saveEdit(item)
+                      if (e.key === 'Escape') { setEditingId(null); setEditMsg('') }
+                    }}
+                    className="w-full px-2 py-1 rounded text-sm text-white outline-none focus:ring-2 focus:ring-primary"
+                    style={inputStyle}
+                    maxLength={120}
+                  />
+                ) : (
+                  <p className="text-sm font-bold text-white uppercase tracking-wide truncate">
+                    {item.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 shrink-0">
+                {editingId === item.id ? (
+                  <>
+                    <button
+                      onClick={() => { void saveEdit(item) }}
+                      disabled={savingId === item.id}
+                      className="px-3 py-1.5 text-xs font-bold text-white rounded transition-colors disabled:opacity-60"
+                      style={{ background: 'hsl(26 91% 51%)' }}
+                    >
+                      {savingId === item.id ? '...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => { setEditingId(null); setEditMsg('') }}
+                      className="px-3 py-1.5 text-xs font-bold text-white/50 hover:text-white rounded transition-colors"
+                      style={{ border: '1px solid hsl(220 20% 30%)' }}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => { void toggleActive(item) }}
+                      className={cn(
+                        'px-2 py-1 text-xs font-bold rounded transition-all',
+                        item.active ? 'text-green-400' : 'text-white/30 hover:text-white/60',
+                      )}
+                      style={{
+                        background: item.active ? 'hsl(140 60% 10%)' : 'hsl(220 30% 14%)',
+                        border: item.active
+                          ? '1px solid hsl(140 60% 30%)'
+                          : '1px solid hsl(220 20% 22%)',
+                      }}
+                      title={item.active ? 'Showing in banner — click to hide' : 'Hidden — click to show'}
+                    >
+                      {item.active ? 'Live' : 'Off'}
+                    </button>
+                    <button
+                      onClick={() => startEdit(item)}
+                      className="px-3 py-1.5 text-xs font-bold text-white/70 hover:text-white rounded transition-colors"
+                      style={{ border: '1px solid hsl(220 20% 30%)' }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => { void handleDelete(item.id) }}
+                      className="px-3 py-1.5 text-xs font-bold text-red-400 hover:text-red-300 rounded transition-colors"
+                      style={{ border: '1px solid hsl(0 50% 30%)' }}
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Auto-generated preview note */}
+      <div
+        className="mt-8 rounded-lg px-4 py-3"
+        style={{ background: 'hsl(220 30% 11%)', border: '1px solid hsl(220 20% 18%)' }}
+      >
+        <p className="text-[11px] font-bold uppercase tracking-widest text-white/30 mb-2">
+          Auto-generated (always shown after custom messages)
+        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-white/40">· Next game — pulled from the season schedule</p>
+          <p className="text-xs text-white/40">· Last result — pulled from the most recent scored game</p>
+          <p className="text-xs text-white/40">· Team identity fallbacks (Orlando Lady Comets, Defending Champions…)</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -2304,7 +2548,7 @@ export default function AdminDashboard() {
         className="px-6 flex gap-6"
         style={{ borderBottom: '1px solid hsl(220 20% 18%)' }}
       >
-        {(['players', 'games', 'content', 'staff'] as Tab[]).map((t) => (
+        {(['players', 'games', 'content', 'staff', 'ticker'] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -2333,6 +2577,8 @@ export default function AdminDashboard() {
         {tab === 'content' && <ContentTab />}
 
         {tab === 'staff' && <StaffTab />}
+
+        {tab === 'ticker' && <TickerTab />}
       </main>
     </div>
   )

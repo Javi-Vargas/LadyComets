@@ -230,6 +230,29 @@ values
   )
 on conflict do nothing;
 
+-- ── Ticker Items (custom banner messages) ──────────────────
+
+create table if not exists ticker_items (
+  id          serial primary key,
+  message     text not null,
+  active      boolean not null default true,
+  sort_order  integer not null default 0,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+);
+
+alter table ticker_items enable row level security;
+
+-- Anyone can read active ticker messages
+create policy "ticker_public_read"
+  on ticker_items for select
+  using (active = true);
+
+-- Only admins can manage ticker items
+create policy "ticker_admin_write"
+  on ticker_items for all
+  using (auth.jwt() ->> 'email' in (select email from allowed_admins));
+
 -- ── Newsletter Subscribers ─────────────────────────────────
 
 create table if not exists newsletter_subscribers (

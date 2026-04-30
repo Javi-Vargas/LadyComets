@@ -109,6 +109,16 @@ export function getContentImageUrl(item: Pick<DbContentItem, 'image_path' | 'ima
   return getPhotoUrl(item.image_path) ?? item.image_url ?? null
 }
 
+/** Shape returned by the `ticker_items` table in Supabase. */
+export type DbTickerItem = {
+  id: number
+  message: string
+  active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
 /** Shape returned by the `newsletter_subscribers` table in Supabase. */
 export type DbNewsletterSubscriber = {
   id: number

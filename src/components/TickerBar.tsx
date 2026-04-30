@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase, type DbGame } from '@/lib/supabase'
+import { supabase, type DbGame, type DbTickerItem } from '@/lib/supabase'
 import { getNextGame } from '@/data/schedule'
 
 const STATIC_ITEMS = [
@@ -10,8 +10,10 @@ const STATIC_ITEMS = [
 
 export default function TickerBar() {
   const [lastGame, setLastGame] = useState<DbGame | null>(null)
+  const [customItems, setCustomItems] = useState<string[]>([])
 
   useEffect(() => {
+    // Last played game result
     supabase
       .from('games')
       .select('*')
@@ -21,14 +23,25 @@ export default function TickerBar() {
       .then(({ data }) => {
         if (data && data.length > 0) setLastGame(data[0] as DbGame)
       })
+
+    // Admin-managed custom ticker messages (active only, sorted)
+    supabase
+      .from('ticker_items')
+      .select('message')
+      .eq('active', true)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (data) setCustomItems((data as Pick<DbTickerItem, 'message'>[]).map((r) => r.message.toUpperCase()))
+      })
   }, [])
 
   const nextGame = getNextGame()
 
-  const dynamicItems: string[] = []
+  const autoItems: string[] = []
 
   if (nextGame) {
-    dynamicItems.push(
+    autoItems.push(
       `NEXT GAME: LADY COMETS VS. ${nextGame.opponent.toUpperCase()} — ${nextGame.displayDate.toUpperCase()}`,
     )
   }
@@ -39,12 +52,13 @@ export default function TickerBar() {
         ? ` ${lastGame.team_score}–${lastGame.opponent_score}`
         : ''
     const resultWord = lastGame.result === 'W' ? 'WIN' : 'LOSS'
-    dynamicItems.push(
+    autoItems.push(
       `FINAL: LADY COMETS${score} — ${resultWord} VS. ${lastGame.opponent.toUpperCase()}`,
     )
   }
 
-  const items = [...dynamicItems, ...STATIC_ITEMS]
+  // Custom items lead, then auto-generated game items, then static fallbacks
+  const items = [...customItems, ...autoItems, ...STATIC_ITEMS]
   const display = [...items, ...items, ...items]
 
   return (
