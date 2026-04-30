@@ -53,8 +53,7 @@ export function usePlayers() {
 
       if (error) throw error
 
-      // If the table is empty fall back to static seed data so the page is never blank
-      setPlayers(data && data.length > 0 ? (data as DbPlayer[]).map(dbToPlayer) : staticRoster)
+      setPlayers((data ?? []).map(dbToPlayer))
     } catch {
       setPlayers(staticRoster)
     } finally {

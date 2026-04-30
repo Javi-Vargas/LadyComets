@@ -48,7 +48,7 @@ export default function Footer() {
             Lady Comets
           </p>
           <p className="text-xs text-white/40 mt-3 max-w-[200px]">
-            Defending champions. Cultural icons. The future of the game.
+            Rising stars. Cultural icons. The future of the game.
           </p>
 
           <div className="flex items-center gap-4 mt-5">

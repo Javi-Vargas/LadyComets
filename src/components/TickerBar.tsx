@@ -4,7 +4,7 @@ import { getNextGame } from '@/data/schedule'
 
 const STATIC_ITEMS = [
   'ORLANDO LADY COMETS — 2026 SEASON',
-  'DEFENDING CHAMPIONS',
+  "ORLANDO'S RISING STARS",
   'AMWAY CENTER — ORLANDO, FL',
 ]
 

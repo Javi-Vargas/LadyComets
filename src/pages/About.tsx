@@ -4,10 +4,9 @@ import { Star, Heart, Trophy, Users, ArrowRight } from 'lucide-react'
 
 /* ── Org stats ── */
 const ORG_STATS = [
-  { value: '2026', label: 'Season' },
+  { value: '2026', label: 'Inaugural Season' },
   { value: 'Orlando', label: 'Home City' },
-  { value: 'Inaugural', label: '2026 Season' },
-  { value: '100%', label: 'Heart & Hustle' },
+  { value: 'GWBA', label: 'League' },
 ]
 
 /* ── Values ── */

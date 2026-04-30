@@ -170,15 +170,9 @@ function BentoCard({ card, cometsWins, cometsLosses }: { card: BentoCardData; co
           <p className="text-sm text-white/50 mt-2 line-clamp-2">{card.excerpt}</p>
         )}
         {card.instagram_url && (
-          <a
-            href={card.instagram_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="mt-2 self-start text-[10px] font-bold text-pink-400/60 hover:text-pink-400 transition-colors uppercase tracking-widest"
-          >
+          <span className="mt-2 self-start text-[10px] font-bold text-pink-400/60 group-hover:text-pink-400 transition-colors uppercase tracking-widest">
             View on Instagram ↗
-          </a>
+          </span>
         )}
       </div>
     </>
@@ -186,9 +180,14 @@ function BentoCard({ card, cometsWins, cometsLosses }: { card: BentoCardData; co
 
   if (card.instagram_url) {
     return (
-      <div className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.45)]`}>
+      <a
+        href={card.instagram_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${card.colSpan} ${card.rowSpan} relative overflow-hidden cursor-pointer group block transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.45)]`}
+      >
         {inner}
-      </div>
+      </a>
     )
   }
 
@@ -288,7 +287,7 @@ export default function Home() {
               </span>
             </h1>
             <p className="text-base md:text-xl text-white/50 mt-3 md:mt-4 max-w-xl mx-auto font-medium tracking-wide">
-              Defending champions. Cultural icons. The future of the game.
+              Rising stars. Cultural icons. The future of the game.
             </p>
           </motion.div>
 
