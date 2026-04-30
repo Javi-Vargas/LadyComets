@@ -15,14 +15,14 @@ export interface Staff {
 export const staffRoster: Staff[] = [
   {
     id: 1,
-    name: 'Coach Name',
+    name: 'Lenlee Klusman',
     title: 'Head Coach',
     category: 'coaching',
-    bio: 'A decorated basketball mind with over a decade of coaching experience at the professional level. Known for developing elite guards and instilling championship DNA into every program she leads. Under her direction, the Lady Comets have transformed into one of the most feared offensive units in the league — a system built on pace, precision, and relentless player development.',
+    bio: 'Head Coach of the Orlando Lady Comets for the 2026 inaugural season. A proven leader who brings intensity, vision, and a player-first philosophy to the program. Coach Klusman is committed to building a championship culture in Orlando from day one.',
     email: 'headcoach@ladycomets.com',
     phone: '',
     twitter: '',
-    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&q=80',
+    image: '/images/staff/lenlee-klusman.png',
     sort_order: 1,
   },
   {
